@@ -11,5 +11,6 @@ class Config:
     REDIRECT=os.getenv("REDIRECT_URI")
     GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
     TWITCH_BOT_ACCOUNT=os.getenv("TWITCH_BOT_ACCOUNT")
+    ELEVEN_API_KEY=os.getenv("ELEVEN_API_KEY")
 
 config = Config()
