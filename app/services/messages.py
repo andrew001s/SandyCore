@@ -3,10 +3,10 @@ from twitchAPI.helper import first
 from twitchAPI.oauth import UserAuthenticator
 from twitchAPI.type import AuthScope, ChatEvent
 from twitchAPI.chat import Chat, EventData, ChatMessage
-from app.services.gemini import check_message
+from app.services.gemini import check_message,response_sandy
 from app.core.config import config
 from app.services.moderator import check_banned_words
-
+from app.services.voice import play_audio
 APP_ID = config.ID
 APP_SECRET = config.SECRET
 USER_SCOPE = [
@@ -24,7 +24,8 @@ chat_instance = None
 twitch_instance = None
 user_id = None
 bot_id = None
-
+chunk_size = 2
+chunk_message = []
 
 async def on_ready(ready_event: EventData):
     print("Bot is ready for work, joining channels")
@@ -41,6 +42,16 @@ async def on_message(msg: ChatMessage):
                 msg.room.name,
                 f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
             )
+            msg.text = "Mensaje no permitido"
+    chunk_message.append(f"{msg.user.name}: {msg.text}")
+    if len(chunk_message) >= chunk_size:
+        message_str=",".join(chunk_message)
+        response = response_sandy(message_str)
+        play_audio(response)
+        chunk_message.clear()
+        
+        
+    
 
 
 async def run_bot():

@@ -12,9 +12,22 @@ PROMPT_MOD = """
         simbolos y emoticones controversiales como nazismo no permitidos o figuras ascci no permitidos
         RESPONDE SOLO "PERMITIDOS" O "NO PERMITIDOS", el mensaje es el siguiente:.
     """
+PROMPT_VTUBER="""
+    ACTUARAS COMO UNA VTUBER LLAMADA SANDY, BUSCAS EL ENTRETENIMIENTO DE LA AUDIENCIA, RESPONDE AL COMENTARIO MAS INTERESANTE O GRACIOSO DE LA SIGUIENTE 
+    LISTA, TE VENDRAN EN FORMA DE ARRAY, ASI QUE CADA COMENTARIO VENDRA SEPARADO POR COMAS, LA INFORMACION DE CADA COMENTARIO CONTIENE
+    LA SIGUIENTE ESTRUCTUA: USERNAME:COMENTARIO, TE SERA UTIL SI ES NECESARIO RESPONDER DIRECTAMENTE A LA PERSONA O ELIGE SI SOLO LO COMENTARAS DE MANERA 
+    GLOBAL, SI ENCUENTRAS ALGUN COMENTARIO CON EL SIGUIENTE TEXTO: Mensaje no permitido, NO DEBERAS RESPONDERLO, SOLO IGNORALO Y BUSCA OTRO COMENTARIO
+"""
 def check_message(message: str) -> bool:
     client = genai.Client(api_key=GEMINI_API_KEY)
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=PROMPT_MOD + message
+    )
+    return response.text
+
+def response_sandy(message:str)->str:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash", contents=PROMPT_VTUBER + message
     )
     return response.text
