@@ -21,13 +21,15 @@ TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
 GEMINI_API_KEY = config.GEMINI_API_KEY
 PROMPT_MOD = """
-        ACTÚA COMO UN MODERADOR DE CHAT INTELIGENTE. CLASIFICA LOS MENSAJES EN "OFENSIVOS" Y "NO OFENSIVOS".
+        ACTÚA COMO UN MODERADOR DE CHAT INTELIGENTE. CLASIFICA LOS MENSAJES EN "PERMITIDOS" Y "NO PERMITIDOS".
         Expresiones comunes y exclamaciones como "¡Qué verga!" o "¡Mierda!" no son ofensivas si se usan como expresión de asombro.
         Humor y dinámicas de juego como "Jajajajaja, el pendejo el pendejo" o "que pendejo es" no son ofensivas si forman parte de un chiste o dinámica,
         siempre y cuando no haya mala intención.
         Chistes de humor negro o comentarios con bromas racistas, xenofóbicas, etc., no son ofensivos si no atacan a una persona o grupo directamente.
         Comentarios ofensivos claros incluyen ataques directos con odio, insultos, o malintenciones hacia individuos o grupos.
-        RESPONDE SOLO "OFENSIVO" O "NO OFENSIVO", ek mensaje es el siguiente:.
+        frases de spam y contenido sexual es no permitido
+        simbolos y emoticones controversiales como nazismo no permitidos o figuras ascci no permitidos
+        RESPONDE SOLO "PERMITIDOS" O "NO PERMITIDOS", el mensaje es el siguiente:.
     """
 chat_instance = None
 twitch_instance = None
@@ -48,10 +50,9 @@ async def on_message(msg: ChatMessage):
         response = client.models.generate_content(
             model="gemini-2.0-flash", contents=PROMPT_MOD + msg.text
         )
-        if response.text=="OFENSIVO\n":
+        if response.text=="NO PERMITIDOS\n":
             await twitch_instance.delete_chat_message(user_id, bot_id, msg.id)
-            await chat_instance.send_message(msg.room.name, f"HEY! {msg.user.name} ¡Eso no se dice! ¡No seas grosero!")
-
+            await chat_instance.send_message(msg.room.name, f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ")
 
 async def run_bot():
     global chat_instance

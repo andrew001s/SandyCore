@@ -1,33 +1,19 @@
 {
-    "groserias": [
+    "palabras": [
         "mierda", "puta", "pendejo", "cabron", "maricon", "zorra", "chinga", "coño", "culero",
-        "verga", "joder", "gilipollas", "imbecil", "estupido", "cabrón", "malparido"
-    ],
-    "spam": [
-        "compren seguidores", "visita mi canal", "hazte rico rápido", "bit.ly/", "ganar dinero fácil",
-        "suscríbete a mi canal", "100% real no fake", "haz clic aquí", "descarga gratis"
-    ],
-    "frases_ofensivas": [
-        "vete a la mierda", "nadie te quiere", "mátate", "eres un fracaso", "te odio", 
-        "ojalá te mueras", "no sirves para nada", "eres un inútil", "deja de streamear"
+        "verga", "joder", "gilipollas", "imbecil", "estupido", "cabrón", "malparido","tonto",
+        "compren", "seguidores", "visita", "canal", "rico", "bit.ly/",
+        "suscríbete", "clic", "aquí", "descarga", "gratis", "vete", "quiere", "mátate",
+        "fracaso","odio", "ojalá", "mueras", "inutil", "deja", "streamear","negro","judio","asqueroso","pinche","indio",
+        "basura","muera","feminismo","cochino","maldito","inmigrante","gays","muerto","horrible","reporté",
+        "sin","viewers","perdedor","pack","only","nudes","calientas","tetas","chichis","teta","chichi","sucio",
+        "porno","xxx","nsfw","desnudate","sexo","hot","link","youtube","cuenta","codigo","promoción","web","bits","subs",
+        "cheer","followers","seguidores"
     ],
     "simbolos_y_caracteres": [
         "卐", "卍", "✞", "☭", "🔞", "💣", "🔫", "⚠️", "🖕", "❌", "🤬"
     ],
-    "racismo_y_discriminacion": [
-        "negro de mierda", "judío asqueroso", "pinche indio", "chino cochino", "maldito inmigrante",
-        "vete a tu país", "basura blanca", "muera el feminismo", "odio a los gays"
-    ],
-    "trolls_y_acoso": [
-        "streamer muerto", "tu directo es una basura", "deja de hacer streams", "cómprate una vida",
-        "te ves horrible", "te reporté", "nadie te ve", "sin viewers", "jajaja perdedor"
-    ],
-    "contenido_sexual": [
-        "pásame pack", "tienes onlyfans?", "quieres nudes?", "me calientas", "habla sucio",
-        "porno", "xxx", "nsfw", "desnúdate", "sexo gratis", "hot girls", "link porno"
-    ],
     "autopromoción_y_links": [
-        "t.me/", "discord.gg/", "https://", "suscríbete a mi youtube", "mi canal es mejor",
-        "sigue mi cuenta", "código de promoción", "visita mi web"
+        "t.me/", "discord.gg/", "https://", "http","youtube.com","facebook.com","xvideos.com", "pornhub.com"
     ]
 }
