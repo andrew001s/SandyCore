@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug FastAPI with Uvicorn",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/.venv/bin/uvicorn",  // O la ruta a tu ejecutable uvicorn
+        "args": [
+          "app.main:app",  // Ruta a tu archivo FastAPI (debe estar en el formato 'app.main:app')
+          "--reload",
+          "--host", "127.0.0.1",
+          "--port", "8000"
+        ],
+        "jinja": true
+      }
+    ]
+  }
+  

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import asyncio
-from messages import run_bot
+from app.services.messages import run_bot
 
 app = FastAPI()
 
