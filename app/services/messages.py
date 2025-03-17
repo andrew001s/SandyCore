@@ -50,17 +50,13 @@ async def on_message(msg: ChatMessage):
         play_audio(response)
         chunk_message.clear()
         
-        
-    
-
-
 async def run_bot():
     global chat_instance
     global twitch_instance
     global user_id
     global bot_id
     twitch = await Twitch(APP_ID, APP_SECRET)
-    auth = UserAuthenticator(twitch, USER_SCOPE)
+    auth = UserAuthenticator(twitch, USER_SCOPE, force_verify=True)
     token, refresh_token = await auth.authenticate()
     user = await first(twitch.get_users(logins=[TARGET_CHANNEL]))
     bot = await first(twitch.get_users(logins=["lasandybot"]))
