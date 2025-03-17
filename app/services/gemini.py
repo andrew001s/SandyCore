@@ -1,5 +1,6 @@
 from app.core.config import config
 from google import genai
+from google.genai import types
 GEMINI_API_KEY = config.GEMINI_API_KEY
 PROMPT_MOD = """
         Eres un moderador de chat inteligente. Clasifica cada mensaje como "PERMITIDOS" o "NO PERMITIDOS" según su contexto:
@@ -17,16 +18,21 @@ Ignora mensajes no permitidos, emoticonos y réplicas a otros usuarios. No salud
 No menciones al usuario a menos que sea estrictamente necesario. La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
 aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones.
 """
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 def check_message(message: str) -> bool:
-    client = genai.Client(api_key=GEMINI_API_KEY)
     response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=PROMPT_MOD + message
-    )
+    model="gemini-2.0-flash",
+    config=types.GenerateContentConfig(
+    system_instruction=PROMPT_MOD),
+    contents=[message])
     return response.text
 
 def response_sandy(message:str)->str:
-    client = genai.Client(api_key=GEMINI_API_KEY)
     response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=PROMPT_VTUBER + message
-    )
+    model="gemini-2.0-flash",
+    config=types.GenerateContentConfig(
+    system_instruction=PROMPT_VTUBER),
+    contents=[message])
     return response.text
