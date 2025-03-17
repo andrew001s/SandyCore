@@ -19,7 +19,7 @@ USER_SCOPE = [
 ]
 TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
-
+BOT_ACCOUNT = config.TWITCH_BOT_ACCOUNT
 chat_instance = None
 twitch_instance = None
 user_id = None
@@ -59,7 +59,7 @@ async def run_bot():
     auth = UserAuthenticator(twitch, USER_SCOPE, force_verify=True)
     token, refresh_token = await auth.authenticate()
     user = await first(twitch.get_users(logins=[TARGET_CHANNEL]))
-    bot = await first(twitch.get_users(logins=["lasandybot"]))
+    bot = await first(twitch.get_users(logins=[BOT_ACCOUNT]))
     bot_id = bot.id
     user_id = user.id
     await twitch.set_user_authentication(token, USER_SCOPE, refresh_token)
