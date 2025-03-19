@@ -47,7 +47,7 @@ async def on_message(msg: ChatMessage):
     if len(chunk_message) >= chunk_size:
         message_str=",".join(chunk_message)
         response = response_sandy(message_str)
-        play_audio(response)
+        ##play_audio(response)
         chunk_message.clear()
         
 async def run_bot():
