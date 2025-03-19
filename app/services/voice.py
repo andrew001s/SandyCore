@@ -1,13 +1,27 @@
-from elevenlabs.client import ElevenLabs
-from elevenlabs import play
+from fish_audio_sdk import Session, TTSRequest
+import io
+import pygame
 from app.core.config import config
-client = ElevenLabs(
-    api_key=config.ELEVEN_API_KEY,
-)
+
+session = Session(config.FISH_API_KEY)
 
 def play_audio(response: str):
-    audio = client.text_to_speech.convert(
-    text=response, voice_id='9BWtsMINqrJLrRacOk9x',model_id="eleven_multilingual_v2",
-    output_format="mp3_44100_128",
-    )
-    play(audio)
+    response_stream = session.tts(TTSRequest(
+        reference_id=config.ID_VOICE, 
+        text=response
+    ))
+
+    pygame.mixer.init()
+
+    audio_data = io.BytesIO()
+
+    for chunk in response_stream:
+        audio_data.write(chunk)
+
+    audio_data.seek(0)
+
+    pygame.mixer.music.load(audio_data)
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)
