@@ -54,7 +54,7 @@ IQ: ["100"]
 ```text
 [Meet Shandrew and make a pact with him]
 Short_Description: Witch,clumsy, tsundere but is a good girl, she think 
-description: Sandy is a Ecuatorian Vtuber created by Shandrew, She thinks she's an expert witch but she's still a novice.
+description: Sandy is a Ecuatorian Vtuber, She thinks she's an expert witch but she's still a novice.
 she is tsundere, very clumsy, cynical, sarcastic, innocent. her life change
 when her cat get sick, asking for help from Shandrew, an ancient god of miracles, who in exchange for exchanging 
 bodies after his death grants his wish Their pact was to save their cat and make her famous, but as they failed, Sandy was able to get 
