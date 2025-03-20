@@ -34,6 +34,7 @@ async def on_ready(ready_event: EventData):
 
 async def on_message(msg: ChatMessage):
     global chat_instance
+    print(f"{msg.user.name}: {msg.text}")
     if check_banned_words(msg.text):
         response = check_message(msg.text)
         if response == "NO PERMITIDOS\n":
