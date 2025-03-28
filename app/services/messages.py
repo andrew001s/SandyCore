@@ -24,7 +24,7 @@ chat_instance = None
 twitch_instance = None
 user_id = None
 bot_id = None
-chunk_size = 2
+chunk_size = 4
 chunk_message = []
 
 async def on_ready(ready_event: EventData):
