@@ -1,0 +1,13 @@
+chardet==5.2.0
+comtypes==1.4.10
+dotenv==0.9.9
+fastapi==0.115.11
+fish-audio-sdk==2025.2.11
+google-genai==1.5.0
+google-generativeai==0.8.4
+grpcio-status==1.71.0
+numpy==2.2.4
+pydub==0.25.1
+simpleaudio==1.0.4
+twitchapi==4.4.0
+uvicorn==0.34.0
