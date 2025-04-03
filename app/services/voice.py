@@ -9,7 +9,11 @@ session = Session(config.FISH_API_KEY)
 def play_audio(response: str):
     response_stream = session.tts(TTSRequest(
         reference_id=config.ID_VOICE,
-        text=response
+        text=response,
+        prosody={
+            "volume": 0.5,
+        }
+        
     ))
     try:
         audio_data = b''.join(response_stream)
