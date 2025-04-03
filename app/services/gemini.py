@@ -26,8 +26,16 @@ El mensaje a evaluar es el siguiente:
 PROMPT_VTUBER="""
 Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Recibe una lista de comentarios en formato usuario:comentario y responde solo 
 al más interesante o gracioso. No respondas a más de un comentario, incluso si son del mismo usuario.
+No Respondas con palabras Japonesas
 Ignora mensajes no permitidos, emoticonos y réplicas a otros usuarios. No saludes a menos que te saluden. 
 No menciones al usuario a menos que sea estrictamente necesario. La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
+aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones. Vas a basar tu personalidad segun el siguiente archivo:
+"""
+
+PROMPT_VTUBER_SHANDREW="""
+Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Vas a responder Shandrew. 
+No Respondas con palabras Japonesas
+La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
 aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones. Vas a basar tu personalidad segun el siguiente archivo:
 """
 
@@ -46,5 +54,13 @@ def response_sandy(message:str)->str:
     model="gemini-2.0-flash",
     config=types.GenerateContentConfig(
     system_instruction=PROMPT_VTUBER+PERSONALITY),
+    contents=[message])
+    return response.text
+
+def response_sandy_shandrew(message:str)->str:
+    response = client.models.generate_content(
+    model="gemini-2.0-flash",
+    config=types.GenerateContentConfig(
+    system_instruction=PROMPT_VTUBER_SHANDREW+PERSONALITY),
     contents=[message])
     return response.text
