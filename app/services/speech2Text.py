@@ -1,5 +1,3 @@
-# app/services/speech2Text.py
-
 import os
 import queue
 import sounddevice as sd
@@ -12,7 +10,6 @@ import time
 from app.services.gemini import response_sandy_shandrew
 from app.services.voice import play_audio
 
-# Configuración de Google Cloud y dispositivos de sonido
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "app/data/secret.json"
 client = speech.SpeechClient()
 input_device = 11
