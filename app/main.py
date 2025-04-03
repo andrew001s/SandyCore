@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import threading
 from app.services.messages import run_bot
-from app.services.speech2Text import transcribir_audio
+from app.services.speech2Text import transcribir_audio, check_keypress
 
 app = FastAPI()
 
@@ -16,7 +16,11 @@ def run_bot_thread():
     loop.run_until_complete(run_bot()) 
 
 def transcribir_audio_thread():
-    transcribir_audio() 
+    transcribir_audio()
+
+def check_keypress_thread():
+    check_keypress()
+    
 
 @app.get("/start")
 async def start_services(service: str, background_tasks: BackgroundTasks):
@@ -24,10 +28,12 @@ async def start_services(service: str, background_tasks: BackgroundTasks):
         threading.Thread(target=run_bot_thread, daemon=True).start()
         return {"message": "Bot iniciado en segundo plano."}
     elif service == "talk":
+        threading.Thread(target=check_keypress_thread, daemon=True).start()
         threading.Thread(target=transcribir_audio_thread, daemon=True).start()
         return {"message": "Transcripción de audio iniciada en segundo plano."}
     elif service == "both":
         threading.Thread(target=run_bot_thread, daemon=True).start()
+        threading.Thread(target=check_keypress_thread, daemon=True).start()
         threading.Thread(target=transcribir_audio_thread, daemon=True).start()
         return {"message": "Bot y transcripción de audio iniciados en segundo plano."}
     else:
