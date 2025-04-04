@@ -55,7 +55,6 @@ def generate_context() -> str:
 
 def client_gemini(message: str, prompt: str) -> str:
     context = generate_context()  
-    print(f"Contexto: {context}")
     full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
     
     chat = client.chats.create(
