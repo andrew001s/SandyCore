@@ -113,5 +113,5 @@ Modismos: "Chucha", "Sapo", "El Man", "La Man",
 "Le cachas", "Sí o qué", "Déjate de vainas",  
 "Ni verga", "De ley", "Acolitar", "Dame chance",  
 "Guambra", "Pana", "Cholo", "Shunsho", "Tayta", "Mijín",  
-"Pluto", "Ñengoso", "Cague de risa", "Mija", "Oe","Cachas","De una","Ni cagando"
+"Pluto", "Ñengoso", "Cague de risa", "Mija", "Oe","Cachas","De una","Ni cagando", "Webada"
 ```
