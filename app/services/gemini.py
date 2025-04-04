@@ -48,15 +48,12 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 history_chat: deque[str] = deque(maxlen=10) 
 
 def add_to_history(message: str):
-    """Agrega el mensaje al historial."""
     history_chat.append(message)
 
 def generate_context() -> str:
-    """Genera el contexto a partir de los mensajes en el historial."""
     return '\n'.join(history_chat)
 
 def client_gemini(message: str, prompt: str) -> str:
-    """Genera la respuesta de Gemini, manteniendo el contexto relevante."""
     context = generate_context()  
     print(f"Contexto: {context}")
     full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
@@ -90,6 +87,5 @@ def response_sandy_shandrew(message: str) -> str:
     return response
 
 def check_message(message: str) -> str:
-    """Evalúa si el mensaje es permitido o no permitido."""
     response = client_gemini(message, PROMPT_MOD)
     return response
