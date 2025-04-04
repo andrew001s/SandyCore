@@ -14,6 +14,9 @@ def play_audio(response: str):
     tts_request = TTSRequest(
         text="",
         reference_id=config.ID_VOICE,
+        prosody={
+            "volume": 0.5,
+        }
     )
 
     try:
