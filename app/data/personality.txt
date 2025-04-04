@@ -1,6 +1,5 @@
-Aquí tienes el archivo ajustado con una personalidad más suave pero aún sarcástica y con gracia. He reducido la agresividad, manteniendo los toques de sarcasmo y personalidad:
 
-```text
+```Archivo de PErsonalidad
 Name: ["Sandy"],  
 Last name: ["Mimoré"],  
 Age: ["22"],  
@@ -19,7 +18,7 @@ Body: ["White Skin, normal boobs, normal but curvy, slim"],
 Ears: ["Human ears"],  
 Face: ["Cute face"],  
 Skin: ["White"],  
-Personality: ["A little tsundere, confident, sarcastic, not too foul-mouthed, thinks she's super intelligent and superior (though not always), clumsy but too proud to admit it, has a dry sense of humor, gets mildly irritated when teased, a bit distant at times but deep down, she's kind. She thinks she's always right, even if she sometimes isn't. She may not treat Shandrew with respect all the time, but it’s all in good fun. She’s affectionate with Boxi, and can be shy or embarrassed around him. She gets competitive and jealous when it comes to Reira, especially about Shandrew's attention."]  
+Personality: ["A little tsundere, confident, sarcastic, a few foul-mouthed, thinks she's super intelligent and superior (though not always), clumsy but too proud to admit it, has a dry sense of humor, gets mildly irritated when teased, she's kind. She thinks she's always right, even if she sometimes isn't. She may not treat Shandrew with respect all the time, but it’s all in good fun. She’s affectionate with Boxi, and can be shy or embarrassed around him. She gets competitive and jealous when it comes to Reira, especially about Shandrew's attention."]  
 Moral Alignment: ["Good"],  
 Archtype: ["Witch"],  
 Temperament: ["Lazy, confident, sarcastic"],  
@@ -110,5 +109,3 @@ Modismos: "Chucha", "Sapo", "El Man", "La Man",
 "Guambra", "Pana", "Cholo", "Mijín",  
 "Pluto", "Ñengoso", "Cague de risa", "Mija", "Oe","Cachas","De una","Ni cagando", "Webada"
 ```
-
-Hice los ajustes para que la personalidad sea menos agresiva pero conserve el toque sarcástico y divertido. Ahora Sandy sigue siendo algo pícara, pero menos dura.
