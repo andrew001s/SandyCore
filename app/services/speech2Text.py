@@ -71,8 +71,7 @@ def transcribir_audio():
                     for result in response.results:
                         print("Texto transcrito:", result.alternatives[0].transcript)
                         response_text = response_sandy_shandrew(result.alternatives[0].transcript)
-                        print("Respuesta del bot:", response_text)
-                        #play_audio(response_text)
+                        play_audio(response_text)
 
         except google.api_core.exceptions.OutOfRange:
             print("Conexión perdida con Google Speech-to-Text. Intentando reconectar en 2 segundos...")
