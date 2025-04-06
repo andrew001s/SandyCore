@@ -5,7 +5,6 @@ import numpy as np
 import keyboard  
 from google.cloud import speech_v1p1beta1 as speech
 import google.api_core.exceptions
-import threading
 import time
 from app.services.gemini import response_sandy_shandrew
 from app.services.voice import play_audio
