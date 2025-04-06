@@ -1,3 +1,2 @@
-import asyncio
-
-bot_lock = asyncio.Lock()
+import threading
+audio_lock = threading.Lock()
