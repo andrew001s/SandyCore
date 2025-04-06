@@ -1,36 +1,24 @@
-from fish_audio_sdk import WebSocketSession, TTSRequest
+from fish_audio_sdk import Session, TTSRequest
 from app.core.config import config
 from pydub import AudioSegment
 import io
 import simpleaudio as sa
 
-ws_session = WebSocketSession(config.FISH_API_KEY)
-
-def stream(text):
-    for line in text.split():
-        yield line + " "
+session = Session(config.FISH_API_KEY)
 
 def play_audio(response: str):
-    tts_request = TTSRequest(
-        text="",
+    response_stream = session.tts(TTSRequest(
         reference_id=config.ID_VOICE,
+        text=response,
         prosody={
-            "volume": 0.5,
+            "volume": 0.8,
         }
-    )
-
+        
+    ))
     try:
-        audio_buffer = io.BytesIO()
-
-        for chunk in ws_session.tts(tts_request, stream(response), backend="speech-1.5"):
-            audio_buffer.write(chunk)
-
-        audio_buffer.seek(0)
-        audio = AudioSegment.from_mp3(audio_buffer)
-
-        play_obj = sa.play_buffer(audio.raw_data, num_channels=audio.channels,
-                                  bytes_per_sample=audio.sample_width, sample_rate=audio.frame_rate)
+        audio_data = b''.join(response_stream)
+        audio = AudioSegment.from_mp3(io.BytesIO(audio_data))
+        play_obj = sa.play_buffer(audio.raw_data, num_channels=audio.channels, bytes_per_sample=audio.sample_width, sample_rate=audio.frame_rate)
         play_obj.wait_done()
-
     except Exception as e:
-        print("Error:", e)
+        print(e)
