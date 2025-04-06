@@ -13,3 +13,4 @@ twitchapi==4.4.0
 uvicorn==0.34.0
 sounddevice==0.5.1
 keyboard==0.13.5
+google-cloud-speech==2.31.1
