@@ -10,7 +10,7 @@ Este proyecto integra el modelo para una **Vtuber IA** utilizando **FastAPI** y 
 
 ## Descripción
 
-Este proyecto permite a los usuarios iniciar servicios de **chat bot de Twitch** y **transcripción de audio** en segundo plano usando **FastAPI** y **hilos de Python**. Todo el proceso es manejado por un servidor ligero y escalable que puedes controlar de forma remota a través de una API REST. Este sistema se puede utilizar para crear un bot que interactúe con Twitch o para transcribir audio en tiempo real.
+Este proyecto permite a los usuarios iniciar servicios de para el funcionamiento del motor de una Vtuber con IA usando **FastAPI** y **hilos de Python**. Todo el proceso es manejado por un servidor ligero y escalable que puedes controlar de forma remota a través de una API REST. Este sistema se puede utilizar para crear un bot que interactúe con el público en tiempo real.
 
 ---
 
