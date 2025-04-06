@@ -7,6 +7,8 @@ from app.services.gemini import check_message,response_sandy
 from app.core.config import config
 from app.services.moderator import check_banned_words
 from app.services.voice import play_audio
+from app.shared.state import bot_lock
+
 APP_ID = config.ID
 APP_SECRET = config.SECRET
 USER_SCOPE = [
@@ -47,8 +49,9 @@ async def on_message(msg: ChatMessage):
     chunk_message.append(f"{msg.user.name}: {msg.text}")
     if len(chunk_message) >= chunk_size:
         message_str=",".join(chunk_message)
-        response = response_sandy(message_str)
-        play_audio(response)
+        async with bot_lock:
+            response = response_sandy(message_str)
+            play_audio(response)
         chunk_message.clear()
         
 async def run_bot():
