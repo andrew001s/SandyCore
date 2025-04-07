@@ -3,10 +3,12 @@ from twitchAPI.helper import first
 from twitchAPI.oauth import UserAuthenticator
 from twitchAPI.type import AuthScope, ChatEvent
 from twitchAPI.chat import Chat, EventData, ChatMessage
-from app.services.gemini import check_message,response_sandy
+from app.services.gemini import check_message,response_sandy,response_gemini_rewards
 from app.core.config import config
 from app.services.moderator import check_banned_words
 from app.services.voice import play_audio
+from twitchAPI.pubsub import PubSub
+
 
 APP_ID = config.ID
 APP_SECRET = config.SECRET
@@ -17,6 +19,8 @@ USER_SCOPE = [
     AuthScope.MODERATOR_MANAGE_CHAT_MESSAGES,
     AuthScope.MODERATOR_READ_CHAT_MESSAGES,
     AuthScope.MODERATION_READ,
+    AuthScope.CHANNEL_READ_REDEMPTIONS,
+    AuthScope.CHANNEL_MANAGE_REDEMPTIONS,
 ]
 TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
@@ -52,6 +56,14 @@ async def on_message(msg: ChatMessage):
         response = response_sandy(message_str)
         play_audio(response)
         chunk_message.clear()
+
+async def chanel_points(uuid: str, msg: dict):
+    redemtion=msg['data']['redemption']['reward']['title']
+    user=msg["data"]['redemption']['user']['display_name']
+    print(f"Redemption: {redemtion} from {user}")
+    redemtion_obj='{"user": "'+user+'", "reward": "'+redemtion+'"}'
+    response = response_gemini_rewards(redemtion_obj)
+    play_audio(response)
         
 async def run_bot():
     global chat_instance
@@ -70,6 +82,12 @@ async def run_bot():
     chat_instance = await Chat(twitch)
     chat_instance.register_event(ChatEvent.READY, on_ready)
     chat_instance.register_event(ChatEvent.MESSAGE, on_message)
+    pubsun = PubSub(twitch)
+    await pubsun.listen_channel_points(
+        user_id,
+        chanel_points,
+    )
+    pubsun.start()
     chat_instance.start()
     try:
         input("press ENTER to stop\n")
