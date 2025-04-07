@@ -4,7 +4,6 @@ from app.core.config import config
 from google import genai
 from google.genai import types
 
-
 PERSONALITY = config.PERSONALITY
 GEMINI_API_KEY = config.GEMINI_API_KEY
 
@@ -53,6 +52,13 @@ las recompensas son las siguientes:
  user: nombre_usuario, reward: nombre_recompensa
 """
 
+PROMPT_ASSIST = """"
+Vas a actuar como asistente inteligente de un directo, tu tarea es clasificar si los mensajes son una orden para gestionar el stream
+o un mensaje de interacción, 
+si es una orden tienes que responder con "orden" y si es un mensaje de interacción responde con "interacción".
+"""
+
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 history_chat: deque[str] = deque(maxlen=10) 
@@ -86,14 +92,28 @@ def response_sandy(message: str) -> str:
     return response
 
 
-def response_sandy_shandrew(message: str) -> str:
-    add_to_history("shandrew:"+message)  
-    response = client_gemini(
+
+async def response_sandy_shandrew(message: str) -> str:
+    response_assist= client_gemini(
         message,
-        PROMPT_VTUBER_SHANDREW + PERSONALITY
+        PROMPT_ASSIST
     )
-    add_to_history("bot:"+response)  
-    return response
+    if response_assist == "orden\n":
+        from app.services.twitch.moderation.actions import moderator_actions
+        await moderator_actions(message)
+        response = client_gemini(
+            message,
+            PROMPT_VTUBER + PERSONALITY
+        )
+        return response
+    elif response_assist == "interacción\n":
+        add_to_history("shandrew:"+message)  
+        response = client_gemini(
+            message,
+            PROMPT_VTUBER_SHANDREW + PERSONALITY
+        )
+        add_to_history("bot:"+response)  
+        return response
 
 def check_message(message: str) -> str:
     response = client_gemini(message, PROMPT_MOD)

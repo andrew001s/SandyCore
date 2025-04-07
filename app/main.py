@@ -1,7 +1,7 @@
 from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import threading
-from app.services.twitch import run_bot
+from app.services.twitch.twitch import run_bot
 from app.services.speech2Text import transcribir_audio, check_keypress
 
 app = FastAPI()

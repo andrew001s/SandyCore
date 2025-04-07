@@ -2,6 +2,7 @@ import os
 import queue
 import sounddevice as sd
 import numpy as np
+import asyncio
 import keyboard  
 from google.cloud import speech_v1p1beta1 as speech
 import google.api_core.exceptions
@@ -69,7 +70,9 @@ def transcribir_audio():
                 for response in responses:
                     for result in response.results:
                         print("Texto transcrito:", result.alternatives[0].transcript)
-                        response_text = response_sandy_shandrew(result.alternatives[0].transcript)
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        response_text = loop.run_until_complete(response_sandy_shandrew(result.alternatives[0].transcript))
                         #print("Respuesta generada:", response_text)
                         play_audio(response_text)
 

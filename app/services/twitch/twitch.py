@@ -21,6 +21,7 @@ USER_SCOPE = [
     AuthScope.MODERATION_READ,
     AuthScope.CHANNEL_READ_REDEMPTIONS,
     AuthScope.CHANNEL_MANAGE_REDEMPTIONS,
+    AuthScope.CHANNEL_MANAGE_BROADCAST
 ]
 TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
@@ -29,7 +30,7 @@ chat_instance = None
 twitch_instance = None
 user_id = None
 bot_id = None
-chunk_size = 4
+chunk_size = 1
 chunk_message = []
 
 async def on_ready(ready_event: EventData):
@@ -49,6 +50,7 @@ async def on_message(msg: ChatMessage):
                 f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
             )
             msg.text = "Mensaje no permitido"
+
     chunk_message.append(f"{msg.user.name}: {msg.text}")
     if len(chunk_message) >= chunk_size:
         message_str=",".join(chunk_message)
@@ -65,6 +67,7 @@ async def chanel_points(uuid: str, msg: dict):
     response = response_gemini_rewards(redemtion_obj)
     play_audio(response)
         
+
 async def run_bot():
     global chat_instance
     global twitch_instance
