@@ -1,11 +1,17 @@
 from typing import List
 from collections import deque
 from app.core.config import config
+from pydantic import BaseModel
 from google import genai
 from google.genai import types
 
 PERSONALITY = config.PERSONALITY
 GEMINI_API_KEY = config.GEMINI_API_KEY
+BOT_NAME = config.TWITCH_BOT_ACCOUNT
+class Order(BaseModel):
+    type: str
+    order_name: str
+    order_objective: str
 
 PROMPT_MOD = """
 Eres un moderador de chat inteligente y contextual. Tu tarea es analizar cada mensaje y clasificarlo como "PERMITIDOS" o "NO PERMITIDOS", teniendo en cuenta el tono, la intención y el contexto en el que se expresa.
@@ -54,20 +60,43 @@ las recompensas son las siguientes:
 
 PROMPT_ASSIST = """"
 Vas a actuar como asistente inteligente de un directo, tu tarea es clasificar si los mensajes son una orden para gestionar el stream
-o un mensaje de interacción, 
-si es una orden tienes que responder con "orden" y si es un mensaje de interacción responde con "interacción".
+o un mensaje de interacción,
+si el mensaje es una orden 
+Usa este esquema JSON para clasificar los mensajes:
+{
+    'type': 'orden',
+    'order_name': str,
+    'order_objective': str,
+}
+los nombres de las ordenes son los siguientes:
+ban, title, unban, timeout, mod, unmod, poll, clip, raid.
+donde order_name es la orden que se dió y order_objective es el objetivo de la orden.
+ejemplo: banea al usuario test
+{
+    type': 'orden',
+    'order_name': 'ban',
+    'order_objective': 'usuario'
+}
+cambia/Pon el título del stream/directo a nuevo título
+{
+    'type': 'orden',
+    'order_name': 'title',
+    'order_objective': 'nuevo título'
+}
+si el mensaje es una interacción responde con el siguiente esquema JSON:
+{
+    'type': 'interacción',
+    'interaction_name': null,
+    'interaction_objective': null,
+}
+
+
 """
 
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 history_chat: deque[str] = deque(maxlen=10) 
-
-def add_to_history(message: str):
-    history_chat.append(message)
-
-def generate_context() -> str:
-    return '\n'.join(history_chat)
 
 def client_gemini(message: str, prompt: str) -> str:
     context = generate_context()  
@@ -80,6 +109,26 @@ def client_gemini(message: str, prompt: str) -> str:
     
     bot_response = chat.send_message(message)
     return bot_response.text
+
+def client_gemini_order(message: str, prompt: str) -> Order:
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt+message,
+        config={
+            'response_mime_type': 'application/json',
+            'response_schema': Order,
+        }
+    )
+    order: Order = response.parsed
+    return order 
+
+def add_to_history(message: str):
+    history_chat.append(message)
+
+def generate_context() -> str:
+    return '\n'.join(history_chat)
+
+
 
 
 def response_sandy(message: str) -> str:
@@ -94,19 +143,21 @@ def response_sandy(message: str) -> str:
 
 
 async def response_sandy_shandrew(message: str) -> str:
-    response_assist= client_gemini(
+    response_assist= client_gemini_order(
         message,
-        PROMPT_ASSIST
+        prompt=PROMPT_ASSIST
     )
-    if response_assist == "orden\n":
-        from app.services.twitch.moderation.actions import moderator_actions
-        await moderator_actions(message)
+    print("response_assist", response_assist)
+    if response_assist.type == "orden":
+        print("orden")
+        from app.services.twitch.actions import moderator_actions
+        await moderator_actions(response_assist.order_objective,response_assist.order_name)
         response = client_gemini(
             message,
             PROMPT_VTUBER + PERSONALITY
         )
         return response
-    elif response_assist == "interacción\n":
+    elif response_assist.type == "interacción":
         add_to_history("shandrew:"+message)  
         response = client_gemini(
             message,
