@@ -69,7 +69,7 @@ Usa este esquema JSON para clasificar los mensajes:
     'order_objective': str,
 }
 los nombres de las ordenes son los siguientes:
-ban, title, unban, timeout, mod, unmod, poll, clip, raid.
+ban, title, unban, timeout, mod, unmod, poll, clip, raid, category, game.
 donde order_name es la orden que se dió y order_objective es el objetivo de la orden.
 ejemplo: banea al usuario test
 {
@@ -148,10 +148,17 @@ async def response_sandy_shandrew(message: str) -> str:
         prompt=PROMPT_ASSIST
     )
     print("response_assist", response_assist)
+    from app.services.twitch.actions import moderator_actions
+
     if response_assist.type == "orden":
-        print("orden")
-        from app.services.twitch.actions import moderator_actions
-        await moderator_actions(response_assist.order_objective,response_assist.order_name)
+        await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
+        response = client_gemini(
+            message,
+            PROMPT_VTUBER + PERSONALITY
+        )
+        return response
+    elif response_assist.type == "game" or response_assist.type == "category":
+        await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
         response = client_gemini(
             message,
             PROMPT_VTUBER + PERSONALITY
