@@ -21,7 +21,10 @@ USER_SCOPE = [
     AuthScope.MODERATION_READ,
     AuthScope.CHANNEL_READ_REDEMPTIONS,
     AuthScope.CHANNEL_MANAGE_REDEMPTIONS,
-    AuthScope.CHANNEL_MANAGE_BROADCAST
+    AuthScope.CHANNEL_MANAGE_BROADCAST,
+    AuthScope.USER_BOT,
+    AuthScope.USER_WRITE_CHAT,
+    AuthScope.CHANNEL_BOT
 ]
 TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
@@ -66,7 +69,6 @@ async def chanel_points(uuid: str, msg: dict):
     redemtion_obj='{"user": "'+user+'", "reward": "'+redemtion+'"}'
     response = response_gemini_rewards(redemtion_obj)
     play_audio(response)
-        
 
 async def run_bot():
     global chat_instance
