@@ -23,18 +23,12 @@ def check_keypress_thread():
     
 
 @app.get("/start")
-async def start_services(service: str, background_tasks: BackgroundTasks):
-    if service == "twitch":
-        threading.Thread(target=run_bot_thread, daemon=True).start()
-        return {"message": "Bot iniciado en segundo plano."}
-    elif service == "talk":
-        threading.Thread(target=check_keypress_thread, daemon=True).start()
-        threading.Thread(target=transcribir_audio_thread, daemon=True).start()
-        return {"message": "Transcripción de audio iniciada en segundo plano."}
-    elif service == "both":
+async def start_services():
+    try:
         threading.Thread(target=run_bot_thread, daemon=True).start()
         threading.Thread(target=check_keypress_thread, daemon=True).start()
         threading.Thread(target=transcribir_audio_thread, daemon=True).start()
-        return {"message": "Bot y transcripción de audio iniciados en segundo plano."}
-    else:
-        return {"error": "Opción no válida. Usa 'bot', 'audio' o 'both'."}
+        return {"message": "Servicios iniciados"}
+    except Exception as e:
+        return {"error": str(e)}
+
