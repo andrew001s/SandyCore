@@ -24,10 +24,6 @@ async def moderator_actions(title: str,name: str):
          )
          return False
          
-
-
-   
-
 async def change_title(title: str):
    await twitch_instance.modify_channel_information(user_id, title=title)
    await twitch_instance.send_chat_message(
