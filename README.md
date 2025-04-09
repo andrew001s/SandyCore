@@ -9,7 +9,7 @@
 Este proyecto integra el modelo para una **Vtuber IA** utilizando **FastAPI** y **hilos en Python**. Puedes iniciar los servicios de forma independiente o todos a la vez mediante una API REST.
 
 ## Descripción
-
+Proyecto que desarrolla una VTuber 2D interactiva impulsada por inteligencia artificial, capaz de responder en tiempo real a los espectadores, hablar con una voz clonada, animarse con Live2D y automatizar tareas de moderación durante transmisiones en vivo. Su objetivo es mejorar la experiencia de creadores de contenido y su audiencia mediante una interacción más natural, divertida y segura.
 Este proyecto permite a los usuarios iniciar servicios de para el funcionamiento del motor de una Vtuber con IA usando **FastAPI** y **hilos de Python**. Todo el proceso es manejado por un servidor ligero y escalable que puedes controlar de forma remota a través de una API REST. Este sistema se puede utilizar para crear un bot que interactúe con el público en tiempo real.
 
 ---
