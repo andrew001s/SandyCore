@@ -24,7 +24,10 @@ USER_SCOPE = [
     AuthScope.CHANNEL_MANAGE_BROADCAST,
     AuthScope.USER_BOT,
     AuthScope.USER_WRITE_CHAT,
-    AuthScope.CHANNEL_BOT
+    AuthScope.CHANNEL_BOT,
+    AuthScope.CLIPS_EDIT,
+    AuthScope.USER_READ_EMAIL,
+    AuthScope.MODERATOR_MANAGE_CHAT_SETTINGS
 ]
 TARGET_CHANNEL = config.CHANNEL
 REDIRECT_URI = config.REDIRECT
@@ -33,7 +36,7 @@ chat_instance = None
 twitch_instance = None
 user_id = None
 bot_id = None
-chunk_size = 1
+chunk_size = 100
 chunk_message = []
 
 async def on_ready(ready_event: EventData):

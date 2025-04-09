@@ -69,19 +69,19 @@ Usa este esquema JSON para clasificar los mensajes:
     'order_objective': str,
 }
 los nombres de las ordenes son los siguientes:
-ban, title, unban, timeout, mod, unmod, poll, clip, raid, category, game.
+title, clip, category, game, only_followers, only_emotes, slow, only_subs.
 donde order_name es la orden que se dió y order_objective es el objetivo de la orden.
-ejemplo: banea al usuario test
-{
-    type': 'orden',
-    'order_name': 'ban',
-    'order_objective': 'usuario'
-}
 cambia/Pon el título del stream/directo a nuevo título
 {
     'type': 'orden',
     'order_name': 'title',
     'order_objective': 'nuevo título'
+}
+activa/deactiva el modo solo seguidores/emotes/lento/sub
+{
+    'type': 'orden',
+    'order_name': 'only_followers',
+    'order_objective': 'on'/'off'
 }
 si el mensaje es una interacción responde con el siguiente esquema JSON:
 {
