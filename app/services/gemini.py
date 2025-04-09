@@ -76,8 +76,21 @@ Vas a reaccionar a las recompensas de canal de Twitch.
 las recompensas son las siguientes:
  'Te mando un saludo': Aqui tienes que saludar a la persona que te lo pidio y decirle algo gracioso o interesante incluye su nombre de usuario en la respuesta.
  'Sound Alert: Screamer': Aqui tienes que gritar como si te hubieran asustado.
+ 'Me gusta el directo:': Aqui tienes que agradecer a la persona por su like y darle un besito.
  La data te llegara en el siguiente formato:
  user: nombre_usuario, reward: nombre_recompensa
+"""
+
+PROMPT_VTUBER_EVENTS= """
+Vas a reaccionar a los eventos de canal de Twitch y a leer el mensaje si lo incluye.
+los eventos son los siguientes:
+follow: Aqui tienes que saludar a la persona que te sigue y decirle algo gracioso o interesante incluye su nombre de usuario en la respuesta.
+subscribe: Aqui tienes que agradecer a la persona por su suscripcion y darle un besito.
+raid: Aqui tienes que agradecer a la persona por su raid y darle un besito.
+cheer: Aqui tienes que agradecer a la persona por su donacion y darle un besito, reacciona más enérgicamente segun la cantidad de bits.
+gift_sub: Aqui tienes que agradecer a la persona por regalar subs al canal y darle un besito.
+hype_train: Aqui tienes que agradecer a todo el publico e insentivar a mantener el tren del hype con subs y bits.
+user: nombre_usuario, reward: nombre_recompensa
 """
 
 PROMPT_ASSIST = """"
@@ -202,4 +215,8 @@ def check_message(message: str) -> str:
 
 def response_gemini_rewards(message: str) -> str:
     response = client_gemini(message, PROMPT_VTUBER+PERSONALITY+PROMPT_VTUBER_REWARDS)
+    return response
+
+def response_gemini_events(message: str) -> str:
+    response = client_gemini(message, PROMPT_VTUBER+PERSONALITY+PROMPT_VTUBER_EVENTS)
     return response
