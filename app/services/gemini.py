@@ -157,13 +157,6 @@ async def response_sandy_shandrew(message: str) -> str:
             PROMPT_VTUBER + PERSONALITY
         )
         return response
-    elif response_assist.type == "game" or response_assist.type == "category":
-        await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
-        response = client_gemini(
-            message,
-            PROMPT_VTUBER + PERSONALITY
-        )
-        return response
     elif response_assist.type == "interacción":
         add_to_history("shandrew:"+message)  
         response = client_gemini(
