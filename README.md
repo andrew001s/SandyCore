@@ -140,7 +140,7 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 ## Licencia
 
 Este proyecto está bajo una **Licencia Dual**:
-- **MIT License**: Permite a los usuarios hacer lo que deseen con el código, incluyendo uso comercial, modificación y distribución, siempre que se incluya la misma licencia.
+- **MIT License**: Permite a los usuarios hacer lo que deseen con el código, modificación y distribución, siempre que se incluya la misma licencia.
 - **GPL-3.0 License**: Garantiza que cualquier distribución del código (modificado o no) esté bajo los mismos términos de la GPL-3.0.
 
 ---
