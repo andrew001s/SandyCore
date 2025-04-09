@@ -1,4 +1,3 @@
-from typing import Optional
 from twitchAPI.twitch import Twitch
 from twitchAPI.helper import first
 from twitchAPI.oauth import UserAuthenticator
