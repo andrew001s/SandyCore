@@ -143,11 +143,8 @@ async def run_bot():
     await eventsub.listen_channel_subscription_gift(user_id,on_sub_gift)
     await eventsub.listen_channel_cheer(user_id,on_cheer)
     await eventsub.listen_channel_raid(to_broadcaster_user_id=user_id,callback=on_raid)
-    await pubsun.listen_channel_points(
-        user_id,
-        chanel_points,
-    )
-    pubsun.start()
+    await pubsun.listen_channel_points(user_id,chanel_points)
+    pubsun.start()  
     chat_instance.start()
     try:
         input("press ENTER to stop\n")
@@ -155,5 +152,6 @@ async def run_bot():
         pass
     finally:
         await eventsub.stop()
-        chat_instance.stop()
+        await pubsun.stop()
+        await chat_instance.stop()
         await twitch.close()
