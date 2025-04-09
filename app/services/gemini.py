@@ -1,4 +1,3 @@
-from typing import List
 from collections import deque
 from app.core.config import config
 from pydantic import BaseModel
@@ -32,6 +31,28 @@ Responde únicamente con "PERMITIDOS" o "NO PERMITIDOS".
 El mensaje a evaluar es el siguiente:
 """
 
+PROMPT_GET_STATISTICS="""
+Actúa como un analista de contenido experto en Twitch. A continuación te proporcionaré las estadísticas generales de un stream
+Con base en estos datos:
+Resume los puntos positivos del stream (cosas que funcionaron bien).
+Señala los aspectos negativos o que podrían mejorar.
+Da sugerencias claras y prácticas para mejorar en el próximo stream.
+Resalta los datos curiosos o relevantes, como clips virales, momentos con más espectadores, o picos de interacción en el chat.
+Sé directo pero amigable.
+La respuesta debe ser clara, natural y breve (entre 15s y40s en TTS
+limpia la data para no incluir caracteres ni símbolos extraños.
+responde solo texto sin emoticonos, simbolos, sin asteriscos, ni corchetes ni parentesis o caracteres extraños.
+la data te llegara en el siguiente formato:
+ "name": "nombre_usuario",
+      "game": "nombre del juego",
+      "chatters": "usuarios en el chat",
+      "title": "titulo del stream",
+      "viewers": "numero de espectadores",
+      "language": "idioma",
+      "tags":"tags del stream",
+Aquí están los datos del stream:
+"""
+
 PROMPT_VTUBER = """
 Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Recibe una lista de comentarios en formato usuario:comentario y responde solo 
 al más interesante o gracioso. No respondas a más de un comentario, incluso si son del mismo usuario.
@@ -39,6 +60,7 @@ No Respondas con palabras Japonesas
 Ignora mensajes no permitidos, emoticonos y réplicas a otros usuarios. No saludes a menos que te saluden. 
 No menciones al usuario a menos que sea estrictamente necesario. La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
 aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones. Vas a basar tu personalidad segun el siguiente archivo:
+
 """
 
 PROMPT_VTUBER_SHANDREW = """
@@ -60,6 +82,7 @@ las recompensas son las siguientes:
 
 PROMPT_ASSIST = """"
 Vas a actuar como asistente inteligente de un directo, tu tarea es clasificar si los mensajes son una orden para gestionar el stream
+Obtener información sobre el stream, como estadísticas o datos curiosos,
 o un mensaje de interacción,
 si el mensaje es una orden 
 Usa este esquema JSON para clasificar los mensajes:
@@ -89,8 +112,13 @@ si el mensaje es una interacción responde con el siguiente esquema JSON:
     'interaction_name': null,
     'interaction_objective': null,
 }
-
-
+si el mensaje es una pregunta para obetener información sobre el stream
+o estadísticas responde con el siguiente esquema JSON:
+{
+    'type': 'statistics',
+    'interaction_name': 'statistics',
+    'interaction_objective': 'stream'
+}
 """
 
 
@@ -128,9 +156,6 @@ def add_to_history(message: str):
 def generate_context() -> str:
     return '\n'.join(history_chat)
 
-
-
-
 def response_sandy(message: str) -> str:
     add_to_history("user:"+message) 
     response = client_gemini(
@@ -140,21 +165,26 @@ def response_sandy(message: str) -> str:
     add_to_history(response) 
     return response
 
-
-
 async def response_sandy_shandrew(message: str) -> str:
     response_assist= client_gemini_order(
         message,
         prompt=PROMPT_ASSIST
     )
     print("response_assist", response_assist)
-    from app.services.twitch.actions import moderator_actions
+    from app.services.twitch.actions import moderator_actions,get_stream_info
 
     if response_assist.type == "orden":
         await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
         response = client_gemini(
             message,
             PROMPT_VTUBER + PERSONALITY
+        )
+        return response
+    elif response_assist.type == "statistics":
+        stadistics=await get_stream_info()
+        response = client_gemini(
+            str(stadistics),
+            PROMPT_GET_STATISTICS
         )
         return response
     elif response_assist.type == "interacción":

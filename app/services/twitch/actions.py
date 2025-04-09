@@ -1,4 +1,5 @@
 from app.services.twitch.twitch import twitch_instance,user_id,bot_id
+import json
 
 async def moderator_actions(title: str,name: str):
    match (name):
@@ -115,3 +116,25 @@ async def slow_mode(activate:str):
          sender_id=bot_id,
          message=f"POLICE Se ha desactivado el modo lento POLICE "
       )
+      
+async def get_stream_info():
+   get_chatters = await twitch_instance.get_chatters(broadcaster_id=user_id, moderator_id=bot_id)
+   chatters_names = [chatter.user_name for chatter in get_chatters.data if chatter.user_name]
+   get_viewers_accounts = len(chatters_names)
+   get_stream = await twitch_instance.get_channel_information(broadcaster_id=user_id)
+   stream_info = {
+      "name": get_stream[0].broadcaster_name,
+      "game": get_stream[0].game_name,
+      "chatters": chatters_names,
+      "title": get_stream[0].title,
+      "viewers": get_viewers_accounts,
+      "language": get_stream[0].broadcaster_language,
+      "tags": get_stream[0].tags,
+   }
+   stream_info_json = json.dumps(stream_info)
+   return stream_info_json
+   
+   
+
+      
+      
