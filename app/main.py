@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import threading
 from app.services.twitch.twitch import run_bot
-from app.services.speech2Text import transcribir_audio, check_keypress, pause, resume, get_status
+from app.services.speech2Text import transcribir_audio, pause, resume, get_status
 
 
 app = FastAPI()
@@ -19,15 +19,11 @@ def run_bot_thread():
 def transcribir_audio_thread():
     transcribir_audio()
 
-def check_keypress_thread():
-    check_keypress()
-    
 
 @app.get("/start")
 async def start_services():
     try:
         threading.Thread(target=run_bot_thread, daemon=True).start()
-        threading.Thread(target=check_keypress_thread, daemon=True).start()
         threading.Thread(target=transcribir_audio_thread, daemon=True).start()
         return {"message": "Servicios iniciados"}
     except Exception as e:
