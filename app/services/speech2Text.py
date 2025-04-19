@@ -22,13 +22,6 @@ audio_queue = queue.Queue(maxsize=10)
 is_paused = False
 is_running = True
 
-def toggle_pause():
-    global is_paused
-    is_paused = not is_paused
-    if is_paused:
-        print("Micrófono en pausa.")
-    else:
-        print("Micrófono reanudado.")
 
 def callback(indata, frames, time, status):
     if status:
@@ -80,15 +73,20 @@ def transcribir_audio():
             print("Conexión perdida con Google Speech-to-Text. Intentando reconectar en 2 segundos...")
             time.sleep(2)  
 
-def check_keypress():
-    global is_running
-    while is_running:
-        if keyboard.is_pressed('*'):  
-            toggle_pause()
-            while keyboard.is_pressed('*'):  
-                pass  
-        if keyboard.is_pressed('ctrl+c'):  
-            print("Saliendo...")
-            is_running = False
-            break
-        time.sleep(0.1)
+
+def pause():
+    global is_paused
+    if not is_paused:
+        is_paused = True
+        print("🔇 Micrófono pausado manualmente.")
+    return is_paused
+
+def resume():
+    global is_paused
+    if is_paused:
+        is_paused = False
+        print("🎤 Micrófono reanudado manualmente.")
+    return is_paused
+
+def get_status():
+    return not is_paused 
