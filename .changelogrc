@@ -1,8 +1,9 @@
 {
-    "grep": "^((?!Merge).)*$",
-    "sections": ["Bug Fixes", "Features", "Documentation", "Breaking Changes", "Refactor", "Style", "Test", "Chore"],
-    "commit-template": "templates/commit_template.md",
+    "app-name": "My app - Changelog",
+    "output": "CHANGELOG.md",
     "template": "templates/template.md",
-    "output": "CHANGELOG.md"
+    "commit-template": "templates/commit_template.md",
+    "sections": ["Bug Fixes", "Features", "Documentation", "Breaking Changes", "Refactor", "Style", "Test", "Chore"],
+    "grep": "^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore"
   }
   
