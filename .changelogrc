@@ -1,8 +1,6 @@
 {
     "appName": "SandyCore - Changelog",
     "outputFile": "CHANGELOG.md",
-    "templateFile": "templates/template.md",
-    "commitTemplateFile": "templates/commit_template.md",
     "grepCommits": "^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore"
   }
   
