@@ -3,6 +3,6 @@
     "sections": ["Bug Fixes", "Features", "Documentation", "Breaking Changes", "Refactor", "Style", "Test", "Chore"],
     "commit-template": "templates/commit_template.md",
     "template": "templates/template.md",
-    "output": "changelog.md"
+    "output": "CHANGELOG.md"
   }
   
