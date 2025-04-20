@@ -1,3 +1,9 @@
+## v1.1.1 (2025-04-20)
+
+### Refactor
+
+- ♻️ reorganizar y modularizar el manejo de autenticación y eventos de Twitch
+
 ## v1.1.0 (2025-04-20)
 
 ### Feat
