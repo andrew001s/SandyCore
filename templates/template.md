@@ -1,0 +1,6 @@
+# Changelog
+
+## {{version}} ({{date}})
+
+{{changes}}
+
