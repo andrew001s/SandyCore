@@ -191,7 +191,7 @@ async def response_sandy_shandrew(message: str) -> str:
         prompt=PROMPT_ASSIST
     )
     print("response_assist", response_assist)
-    from app.services.twitch.actions import moderator_actions,get_stream_info
+    from app.services.twitch.events.moderation_handler import moderator_actions,get_stream_info
 
     if response_assist.type == "orden":
         await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
