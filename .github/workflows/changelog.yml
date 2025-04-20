@@ -9,30 +9,51 @@ jobs:
   changelog:
     runs-on: ubuntu-latest  
     steps:
+      # Paso 1: Clonar el código
       - name: Checkout code
         uses: actions/checkout@v2  
 
+      # Paso 2: Configurar Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v2 
         with:
           node-version: '14'  
 
+      # Paso 3: Instalar git-changelog
       - name: Install git-changelog
         run: |
           npm install -g git-changelog 
 
+      # Paso 4: Verificar que git-changelog está instalado correctamente
+      - name: Check git-changelog version
+        run: |
+          git-changelog --version
+
+      # Paso 5: Verificar que el archivo .changelogrc existe
+      - name: Verify changelogrc file exists
+        run: |
+          cat .changelogrc
+
+      # Paso 6: Generar el changelog
       - name: Generate Changelog
         run: |
-            git changelog > CHANGELOG.md
-  
+            git changelog > changelog.md
+
+      # Paso 7: Configurar git correctamente
       - name: Configure git
         run: |
-            git config user.name "${{ secrets.GIT_USER_NAME }}"
-            git config user.email "${{ secrets.GIT_USER_EMAIL }}"
+            git config --global user.name "${{ secrets.GIT_USER_NAME }}"
+            git config --global user.email "${{ secrets.GIT_USER_EMAIL }}"
+            git fetch --tags
 
+      # Paso 8: Verificar que el archivo changelog.md existe
+      - name: Verify changelog file exists
+        run: |
+          ls -l changelog.md
+
+      # Paso 9: Hacer commit y push del changelog
       - name: Commit and push changelog
         run: |
-          git add CHANGELOG.md 
-          git commit -m "chore: update changelog"  
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
-
