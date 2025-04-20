@@ -2,6 +2,8 @@
 
 ## v1.1.0 (2025-04-20)
 
+## v1.1.0 (2025-04-20)
+
 ### Feat
 
 - ✨ agregar manejo de tokens para autenticación de usuario en Twitch
