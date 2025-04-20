@@ -30,4 +30,4 @@ jobs:
           git commit -m "docs(changelog): update changelog" || echo "No changes to commit"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           git checkout main
-          git push
+          git push origin main --tags
