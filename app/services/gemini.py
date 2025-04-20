@@ -140,28 +140,35 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 history_chat: deque[str] = deque(maxlen=10) 
 
 def client_gemini(message: str, prompt: str) -> str:
-    context = generate_context()  
-    full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
-    
-    chat = client.chats.create(
-        model="gemini-2.0-flash", 
-        config=types.GenerateContentConfig(system_instruction=full_prompt),
-    )
-    
-    bot_response = chat.send_message(message)
-    return bot_response.text
+    try:
+        context = generate_context()  
+        full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
+        
+        chat = client.chats.create(
+            model="gemini-2.0-flash", 
+            config=types.GenerateContentConfig(system_instruction=full_prompt),
+        )
+        
+        bot_response = chat.send_message(message)
+        return bot_response.text
+    except Exception as e:
+        print(f"Error en client_gemini: {e}")
+
 
 def client_gemini_order(message: str, prompt: str) -> Order:
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt+message,
-        config={
-            'response_mime_type': 'application/json',
-            'response_schema': Order,
-        }
-    )
-    order: Order = response.parsed
-    return order 
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt+message,
+            config={
+                'response_mime_type': 'application/json',
+                'response_schema': Order,
+            }
+        )
+        order: Order = response.parsed
+        return order 
+    except Exception as e:
+        print(f"Error en client_gemini_order: {e}")
 
 def add_to_history(message: str):
     history_chat.append(message)
