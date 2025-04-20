@@ -1,6 +1,0 @@
-{
-    "appName": "SandyCore - Changelog",
-    "outputFile": "CHANGELOG.md",
-    "grepCommits": ".*"
-  }
-  
