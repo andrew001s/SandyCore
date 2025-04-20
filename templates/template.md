@@ -1,6 +1,10 @@
-# Changelog
+# {{appName}}
 
-## {{version}} ({{date}})
+{{#tags}}
+## {{name}}
 
-{{changes}}
+{{#commits}}
+- {{subject}} ({{hash}})
+{{/commits}}
 
+{{/tags}}

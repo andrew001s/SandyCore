@@ -1,1 +1,1 @@
-- **{{commit_type}}**: {{commit_message}} ({{commit_author}})
+- {{subject}} ({{hash}})
