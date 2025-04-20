@@ -8,12 +8,6 @@
 
 ### Fix
 
-- 🐛 corregir el comando de push en el flujo de trabajo de changelog para usar el token de acceso correcto
-- 🐛 corregir comando de push en el flujo de trabajo de changelog para usar el token de acceso
-- 🐛 actualizar configuración de git para usar secretos en lugar de valores fijos
-- 🐛 agregar configuración de git antes de realizar el commit del changelog
-- 🐛 corregir salida del comando git changelog para generar el archivo changelog.md
-- 🐛 corregir configuración del flujo de trabajo de changelog para usar Node.js en lugar de Python
 - 🐛 agregar manejo de excepciones en las funciones client_gemini y client_gemini_order
 - 🐛 manejar excepciones en las acciones del moderador
 - 🐛 eliminar función check_keypress y su hilo asociado
