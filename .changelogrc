@@ -1,8 +1,8 @@
 {
-  "app-name": "SandyCore - Changelog",
-  "output": "CHANGELOG.md",
-  "template": "templates/template.md",
-  "commit-template": "templates/commit_template.md",
-  "sections": ["Bug Fixes", "Features", "Documentation", "Breaking Changes", "Refactor", "Style", "Test", "Chore"],
-  "grep": "^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore"
-}
+    "appName": "SandyCore - Changelog",
+    "outputFile": "CHANGELOG.md",
+    "templateFile": "templates/template.md",
+    "commitTemplateFile": "templates/commit_template.md",
+    "grepCommits": "^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore"
+  }
+  
