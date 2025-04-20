@@ -34,6 +34,5 @@ jobs:
         run: |
           git add changelog.md  
           git commit -m "chore: update changelog"  
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
+
