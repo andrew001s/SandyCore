@@ -1,30 +1,34 @@
 from app.services.twitch.twitch import twitch_instance,user_id,bot_id
 import json
 
-async def moderator_actions(title: str,name: str):
-   match (name):
-      case "title":
-         await change_title(title)
-      case "game" | "category":
-         await change_game(title)
-      case "clip":
-         await create_clip()
-      case "only_followers":
-         await only_followers(title)
-      case "only_subs":
-         await only_subs(title)
-      case "only_emotes":
-         await only_emotes(title)
-      case "slow":
-         await slow_mode(title)
-      case _:
-         await twitch_instance.send_chat_message(
-            broadcaster_id=user_id,
-            sender_id=bot_id,
-            message=f"POLICE No se ha podido ejecutar la orden POLICE "
-         )
-         return False
-         
+async def moderator_actions(title: str, name: str):
+   try:
+      match (name):
+         case "title":
+            await change_title(title)
+         case "game" | "category":
+            await change_game(title)
+         case "clip":
+            await create_clip()
+         case "only_followers":
+            await only_followers(title)
+         case "only_subs":
+            await only_subs(title)
+         case "only_emotes":
+            await only_emotes(title)
+         case "slow":
+            await slow_mode(title)
+         case _:
+            await twitch_instance.send_chat_message(
+               broadcaster_id=user_id,
+               sender_id=bot_id,
+               message=f"POLICE No se ha podido ejecutar la orden POLICE "
+            )
+            return False
+   except Exception as e:
+      print(f"Error: {e}")
+      return False
+
 async def change_title(title: str):
    await twitch_instance.modify_channel_information(user_id, title=title)
    await twitch_instance.send_chat_message(

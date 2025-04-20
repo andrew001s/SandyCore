@@ -51,8 +51,8 @@ async def on_ready(ready_event: EventData):
 
 async def on_message(msg: ChatMessage):
     global chat_instance
-    print(f"{msg.user.name}: {msg.text}")
-    if check_banned_words(msg.text):
+ 
+    if check_banned_words(msg.text) and msg.user.mod is False:
         response = check_message(msg.text)
         if response == "NO PERMITIDOS\n":
             await twitch_instance.delete_chat_message(user_id, bot_id, msg.id)
