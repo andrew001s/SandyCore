@@ -11,15 +11,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          persist-credentials: false 
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+
       - name: Install Commitizen
         run: pip install commitizen
+
       - name: Generate Changelog
         run: cz changelog
+
       - name: Commit Changelog
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,4 +36,5 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           git checkout main
           git pull origin main
-          git push origin main --tags
+          git push origin main
+          git push origin --tags
