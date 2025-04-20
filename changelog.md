@@ -10,7 +10,6 @@ Grep commits:  |||||||
 Getting last tag
 Reading git log since the beggining
 Executing :  git log  --grep="|||||||" -i -E --format=%H%n%s%n%b%n==END==
-Incorrect message: d2699ed3f0b12851e5187ba1462e03caf99bf3e0 Merge remote-tracking branch 'refs/remotes/origin/main'
 Parsed 1 commits
 Generating changelog to CHANGELOG.md (  )
 error TypeError: Cannot read property 'replace' of undefined
