@@ -6,17 +6,21 @@ Found changelog rc
   - The output file is CHANGELOG.md
   - The template file is templates/template.md
   - The commit template file is templates/commit_template.md
-Grep commits:  |||||||
+Grep commits:  ^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore
 Getting last tag
 Reading git log since the beggining
-Executing :  git log  --grep="|||||||" -i -E --format=%H%n%s%n%b%n==END==
+Executing :  git log  --grep="^fix|^feat|^docs|BREAKING|^refactor|^style|^test|^chore" -i -E --format=%H%n%s%n%b%n==END==
 Parsed 1 commits
 Generating changelog to CHANGELOG.md (  )
-error TypeError: Cannot read property 'replace' of undefined
-    at /opt/hostedtoolcache/node/14.21.3/x64/lib/node_modules/git-changelog/tasks/lib/organize-commits.js:70:40
-    at Array.forEach (<anonymous>)
-    at Changelog.organizeCommits (/opt/hostedtoolcache/node/14.21.3/x64/lib/node_modules/git-changelog/tasks/lib/organize-commits.js:69:19)
-    at Changelog.writeChangelog (/opt/hostedtoolcache/node/14.21.3/x64/lib/node_modules/git-changelog/tasks/lib/write-change-log.js:26:23)
-    at Changelog.generateFromCommits (/opt/hostedtoolcache/node/14.21.3/x64/lib/node_modules/git-changelog/tasks/lib/generate.js:10:15)
-    at processTicksAndRejections (internal/process/task_queues.js:95:5)
+loading template from templates/template.md
+loading commit template from  templates/commit_template.md
+No custom template found [Error: ENOENT: no such file or directory, open 'templates/commit_template.md'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'templates/commit_template.md'
+}
+Found default template
+Commit template loaded
+Found template
 Finished generating log Yai!
