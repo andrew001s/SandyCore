@@ -15,7 +15,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+#test
 @app.get("/")
 def read_root():
     return {"message": "Twitch Chat Bot corriendo con FastAPI 🚀"}
