@@ -7,32 +7,28 @@ on:
 
 jobs:
   changelog:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest  
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2  #
+        uses: actions/checkout@v2  
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2 
         with:
-          python-version: '3.x' 
+          node-version: '14'  
 
-      - name: Install dependencies
+      - name: Install git-changelog
         run: |
-          pip install -r requirements.txt  # Instala las dependencias del proyecto
-          pip install python-semantic-release  # Instala python-semantic-release
+          npm install -g git-changelog 
 
       - name: Generate Changelog
         run: |
-          python -m semantic_release changelog  # Genera el changelog
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-
+          git changelog --output changelog.md  
       - name: Commit and push changelog
         run: |
-          git add changelog.md  # Asegúrate de que el archivo changelog.md esté añadido
-          git commit -m "chore: update changelog"  # Realiza el commit del changelog generado
-          git push  # Empuja los cambios al repositorio
+          git add changelog.md  
+          git commit -m "chore: update changelog"  
+          git push  
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
