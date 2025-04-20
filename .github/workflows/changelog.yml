@@ -23,7 +23,7 @@ jobs:
 
       - name: Generate Changelog
         run: |
-            git changelog > changelog.md  
+            git changelog > CHANGELOG.md
   
       - name: Configure git
         run: |
@@ -32,7 +32,7 @@ jobs:
 
       - name: Commit and push changelog
         run: |
-          git add changelog.md  
+          git add CHANGELOG.md 
           git commit -m "chore: update changelog"  
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
 
