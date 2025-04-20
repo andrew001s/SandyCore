@@ -8,7 +8,6 @@ on:
 jobs:
   changelog:
     runs-on: ubuntu-latest  
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2  
@@ -24,11 +23,12 @@ jobs:
 
       - name: Generate Changelog
         run: |
-          git changelog --output changelog.md  
+          git changelog > changelog.md 
+
       - name: Commit and push changelog
         run: |
           git add changelog.md  
           git commit -m "chore: update changelog"  
-          git push  
+          git push 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
