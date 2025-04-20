@@ -24,6 +24,11 @@ jobs:
       - name: Generate Changelog
         run: |
             git changelog > changelog.md  
+  
+      - name: Configure git
+        run: |
+            git config --global user.name "andrew001s"  
+            git config --global user.email "andrew001s+<algo>@users.noreply.github.com"
 
       - name: Commit and push changelog
         run: |
