@@ -14,32 +14,6 @@ Este proyecto permite a los usuarios iniciar servicios de para el funcionamiento
 
 ---
 
-## Estructura del Proyecto
-
-```
-├── app
-│   ├── core
-│   │   ├── bannedWords.py         # Archivo para manejar palabras prohibidas.
-│   │   ├── config.py              # Archivo de configuración con ajustes globales.
-│   │   └── personality.py         # Configuración de la personalidad del bot.
-│   ├── data
-│   │   ├── banned_words.json      # Archivo JSON con palabras prohibidas.
-│   │   ├── personality.txt        # Archivo de texto con detalles sobre la personalidad.
-│   │   └── secret.json            # Archivo JSON de credenciales de Google Cloud
-│   ├── main.py                    # Archivo principal que ejecuta la API FastAPI.
-│   ├── services
-│   │   ├── gemini.py              # Servicio para interactuar con el motor de IA.
-│   │   ├── messages.py            # Lógica para manejar los mensajes de twitch.
-│   │   ├── moderator.py           # Lógica para moderación del chat de Twitch.
-│   │   ├── speech2Text.py         # Funciones para convertir audio en texto.
-│   │   └── voice.py               # Manejo de la voz del bot.
-│   └── shared
-│       └── state.py               # Estado compartido y manejo de hilos.
-└── requirements.txt               # Lista de dependencias del proyecto.
-```
-
----
-
 ## Instalación
 
 ### Requisitos previos
