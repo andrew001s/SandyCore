@@ -68,13 +68,14 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
    Crea un archivo `.env` en la raíz del proyecto con las siguientes variables (asegúrate de añadir tus propias claves y configuraciones):
 
    ```ini
-   TWITCH_SECRET=your_secret_here
-   TWITCH_CLIENT_ID=your_client_id_here
-   TWITCH_CHANNEL=your_channel_here
-   REDIRECT_URI=your_redirect_uri_here
-   TWITCH_BOT_ACCOUNT=your_bot_account_here
-   FISH_API_KEY=your_fish_api_key_here
-   ID_VOICE=your_id_voice_here
+     TWITCH_SECRET=your_secret_here
+     TWITCH_CLIENT_ID=your_client_id_here
+     TWITCH_CHANNEL=your_channel_here
+     REDIRECT_URI=http://localhost:17563
+     GEMINI_API_KEY=your_gemini_api_key_here
+     TWITCH_BOT_ACCOUNT=your_bot_account_here
+     FISH_API_KEY=your_fish_api_key_here
+     ID_VOICE=your_id_voice_here
    ```
 
    Estas variables son necesarias para la autenticación con Twitch, configurar la cuenta del bot y otros servicios. Asegúrate de tener las credenciales correctas y los permisos necesarios antes de ejecutar el proyecto.
@@ -91,49 +92,59 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 
 ---
 
-## Endpoints
+---
 
+## Endpoints Disponibles
+
+### **`GET /`**
+- **Descripción**: Endpoint raíz para verificar que el servidor está corriendo.
+- **Respuesta**:
+  ```json
+  {
+    "message": "Twitch Chat Bot corriendo con FastAPI 🚀"
+  }
 ### **`GET /start`**
 
 - **Descripción**: Inicia los servicios en segundo plano según el parámetro `service` proporcionado.
 
-  **Parámetros**:
-  - `service` (obligatorio): Especifica el servicio a iniciar:
-    - **`twitch`**: Inicia el bot de Twitch.
-    - **`talk`**: Inicia el sistema de transcripción de audio.
-    - **`both`**: Inicia ambos servicios.
+- **Respuesta Exitosa**: 
+```json
+{
+  "message": "Servicios iniciados"
+}
+```
 
-- **Ejemplo**:
-  
-  - Para iniciar solo el bot de Twitch:
-    ```http
-    GET http://127.0.0.1:8000/start?service=twitch
-    ```
+### **`POST /pause`**
+- **Descripción**: Pausa el micrófono para detener la transcripción de audio.
 
-  - Para iniciar solo la transcripción de audio:
-    ```http
-    GET http://127.0.0.1:8000/start?service=talk
-    ```
+- **Respuesta**:
+```json
+{
+  "status": "Micrófono pausado",
+  "paused": true
+}
+```
+### **`POST /resume`**
+- **Descripción**: Pausa el micrófono para detener la transcripción de audio.
 
-  - Para iniciar ambos servicios:
-    ```http
-    GET http://127.0.0.1:8000/start?service=both
-    ```
+- **Respuesta**:
+```json
+{
+  "status": "Micrófono reanudado",
+  "paused": false
+}
+```
 
-- **Respuestas**:
-  - Si el servicio se inicia correctamente:
-    ```json
-    {
-      "message": "Bot iniciado en segundo plano."
-    }
-    ```
+### **`GET /mic-status`**
+- **Descripción**: Pausa el micrófono para detener la transcripción de audio.
 
-  - Si el parámetro `service` es incorrecto:
-    ```json
-    {
-      "error": "Opción no válida. Usa 'twitch', 'talk' o 'both'."
-    }
-    ```
+- **Respuesta**:
+```json
+{
+  "status": "activo",  // o "pausado"
+  "paused": false      // o true
+}
+```
 
 ---
 
