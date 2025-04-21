@@ -75,7 +75,7 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 - **Respuesta**:
   ```json
   {
-    "message": "Twitch Chat Bot corriendo con FastAPI 🚀"
+    "message": "Sandy IA corriendo🚀"
   }
 ### **`GET /start`**
 

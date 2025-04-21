@@ -18,7 +18,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Twitch Chat Bot corriendo con FastAPI 🚀"}
+    return {"message": "Sandy IA corriendo🚀"}
 
 def run_bot_thread():
     loop = asyncio.new_event_loop() 
