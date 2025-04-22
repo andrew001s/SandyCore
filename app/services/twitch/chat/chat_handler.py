@@ -25,6 +25,7 @@ async def on_ready(ready_event: EventData):
 
 
 async def on_message(msg: ChatMessage):
+    print(f"Mensaje recibido: {msg.room.name}")
     print(f"{msg.user.name}: {msg.text}")
     if check_banned_words(msg.text) and msg.user.mod is False:
         response = check_message(msg.text)

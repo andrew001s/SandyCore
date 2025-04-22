@@ -7,6 +7,7 @@ from twitchAPI.helper import first
 from app.core.config import config
 
 TOKEN_FILE = 'tokens.json'
+BOT_TOKEN_FILE = 'bot_tokens.json'
 
 USER_SCOPE = [
     AuthScope.CHAT_READ,
@@ -32,6 +33,8 @@ USER_SCOPE = [
 
 twitch = None
 user = None
+twitch_bot = None
+user_bot = None
 
 async def load_tokens():
     if os.path.exists(TOKEN_FILE):
@@ -42,17 +45,28 @@ async def load_tokens():
 async def save_tokens(token, refresh_token):
     with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'refresh_token': refresh_token}, f)
+
+async def load_bot_tokens():
+    if os.path.exists(BOT_TOKEN_FILE):
+        with open(BOT_TOKEN_FILE, 'r') as f:
+            return json.load(f)
+    return None
+
+async def save_bot_tokens(token, refresh_token):
+    with open(BOT_TOKEN_FILE, 'w') as f:
+        json.dump({'token': token, 'refresh_token': refresh_token}, f)
         
 async def refresh_access_token(twitch, refresh_token):
     token_data = await twitch.refresh_user_authentication(refresh_token)
     return token_data['access_token'], token_data['refresh_token']
 
-async def create_twitch_instance():
+async def create_twitch_instance(bot: bool = False):
     global twitch
     global user
-    
+
     twitch_client = await Twitch(config.ID, config.SECRET)
     tokens = await load_tokens()
+    
     if tokens:
         token = tokens['token']
         refresh_token = tokens['refresh_token']
@@ -61,14 +75,37 @@ async def create_twitch_instance():
         except:
             token, refresh_token = await refresh_access_token(twitch_client, refresh_token)
             await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
-        print("Token cargado.")
+        print("Token cargado para la cuenta principal.")
     else:
         auth = UserAuthenticator(twitch_client, USER_SCOPE, force_verify=True)
         token, refresh_token = await auth.authenticate()
         await save_tokens(token, refresh_token)
         await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
-        print("Nuevo token generado y guardado.")
+        print("Nuevo token generado y guardado para la cuenta principal.")
 
+    if bot:
+        bot_twitch_client = await Twitch(config.ID, config.SECRET)
+        bot_tokens = await load_bot_tokens()  # Carga los tokens del archivo específico del bot
+        if bot_tokens:
+            bot_token = bot_tokens['token']
+            bot_refresh_token = bot_tokens['refresh_token']
+            try:
+                await bot_twitch_client.set_user_authentication(bot_token, USER_SCOPE, bot_refresh_token)
+            except:
+                bot_token, bot_refresh_token = await refresh_access_token(bot_twitch_client, bot_refresh_token)
+                await bot_twitch_client.set_user_authentication(bot_token, USER_SCOPE, bot_refresh_token)
+            print("Token cargado para la cuenta bot.")
+        else:
+            bot_auth = UserAuthenticator(bot_twitch_client, USER_SCOPE, force_verify=True)
+            bot_token, bot_refresh_token = await bot_auth.authenticate()
+            await save_bot_tokens(bot_token, bot_refresh_token)  # Guarda los tokens en el archivo específico del bot
+            await bot_twitch_client.set_user_authentication(bot_token, USER_SCOPE, bot_refresh_token)
+            print("Nuevo token generado y guardado para la cuenta bot.")
     user = await first(twitch_client.get_users(logins=[config.CHANNEL]))
     twitch = twitch_client
-    return twitch, user.id
+    if bot:
+        twitch_bot = bot_twitch_client
+        user_bot = await first(twitch_bot.get_users(logins=[config.TWITCH_BOT_ACCOUNT]))
+        return twitch,twitch_bot, user.id
+    else:
+        return twitch,twitch, user.id
