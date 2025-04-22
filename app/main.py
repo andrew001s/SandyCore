@@ -20,19 +20,19 @@ app.add_middleware(
 def read_root():
     return {"message": "Sandy IA corriendo🚀"}
 
-def run_bot_thread():
+def run_bot_thread(bot: bool):
     loop = asyncio.new_event_loop() 
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_bot()) 
+    loop.run_until_complete(run_bot(bot)) 
 
 def transcribir_audio_thread():
     transcribir_audio()
 
 
 @app.get("/start")
-async def start_services():
+async def start_services(bot: bool = False):
     try:
-        threading.Thread(target=run_bot_thread, daemon=True).start()
+        threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
         threading.Thread(target=transcribir_audio_thread, daemon=True).start()
         return {"message": "Servicios iniciados"}
     except Exception as e:
