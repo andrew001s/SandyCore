@@ -13,6 +13,7 @@ chunk_message = []
 chat = None
 
 async def setup_chat(twitch):
+    global chat
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
