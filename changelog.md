@@ -1,3 +1,18 @@
+## v1.2.0 (2025-04-21)
+
+### Feat
+
+- ✨ agregar soporte para autenticación de bot y manejo de tokens en la API de Twitch
+
+### Fix
+
+- 🐛 reemplazar el envío de mensajes de Twitch por el método de chat en el manejador de moderación
+- 🐛 corregir la declaración de variable chat en setup_chat
+
+### Refactor
+
+- ♻️ actualizar el mensaje de inicio en la API a "Sandy IA corriendo🚀"
+
 ## v1.1.1 (2025-04-20)
 
 ### Refactor
