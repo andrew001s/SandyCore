@@ -1,4 +1,5 @@
 from app.services.twitch.auth.auth import twitch,user
+from app.services.twitch.chat.chat_handler import chat
 import json
 
 async def moderator_actions(title: str, name: str):
@@ -19,10 +20,9 @@ async def moderator_actions(title: str, name: str):
          case "slow":
             await slow_mode(title)
          case _:
-            await twitch.send_chat_message(
-               broadcaster_id=user.id,
-               sender_id=user.id,
-               message=f"POLICE No se ha podido ejecutar la orden POLICE "
+            await chat.send_message(
+               room=user.display_name,
+               text=f"POLICE No se ha podido ejecutar la orden POLICE "
             )
             return False
    except Exception as e:
@@ -31,10 +31,9 @@ async def moderator_actions(title: str, name: str):
 
 async def change_title(title: str):
    await twitch.modify_channel_information(user.id, title=title)
-   await twitch.send_chat_message(
-      broadcaster_id=user.id,
-      sender_id=user.id,
-      message=f"POLICE Se ha cambiado el titulo del stream a {title} POLICE "
+   await chat.send_message(
+      room=user.display_name,
+      text=f"POLICE Se ha cambiado el titulo del stream a {title} POLICE "
    )
    
 async def change_game(game: str):
@@ -43,82 +42,72 @@ async def change_game(game: str):
       game_id = g.id
       break 
    await twitch.modify_channel_information(user.id, game_id)
-   await twitch.send_chat_message(
-      broadcaster_id=user.id,
-      sender_id=user.id,
-      message=f"POLICE Se ha cambiado la categoria del stream a {game} POLICE "
+   await chat.send_message(
+      room=user.display_name,
+      text=f"POLICE Se ha cambiado la categoria del stream a {game} POLICE "
    )
 
 async def create_clip():
    clip = await twitch.create_clip(user.id)
-   await twitch.send_chat_message(
-      broadcaster_id=user.id,
-      sender_id=user.id,
-      message=f"POLICE Se ha creado un clip {clip.edit_url} POLICE "
+   await chat.send_message(
+      room=user.display_name,
+      text=f"POLICE Se ha creado un clip {clip.edit_url} POLICE "
    )
 
 async def only_followers(activate:str):
    if activate=='on':
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,follower_mode=True)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha activado el modo seguidores POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha activado el modo seguidores POLICE "
       )
    else:
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,follower_mode=False)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha desactivado el modo seguidores POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha desactivado el modo seguidores POLICE "
       )
 
 async def only_subs(activate:str):
    if activate=='on':
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,subscriber_mode=True)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha activado el modo subs POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha activado el modo subs POLICE "
       )
    else:
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,subscriber_mode=False)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha desactivado el modo subs POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha desactivado el modo subs POLICE "
       )
 
 async def only_emotes(activate:str):
    if activate=='on':
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,emote_mode=True)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha activado el modo emotes POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha activado el modo emotes POLICE "
       )
    else:
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,emote_mode=False)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha desactivado el modo emotes POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha desactivado el modo emotes POLICE "
       )
 
 async def slow_mode(activate:str):
    if activate=='on':
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,slow_mode=True)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha activado el modo lento POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha activado el modo lento POLICE "
       )
    else:
       await twitch.update_chat_settings(broadcaster_id=user.id, moderator_id=user.id,slow_mode=False)
-      await twitch.send_chat_message(
-         broadcaster_id=user.id,
-         sender_id=user.id,
-         message=f"POLICE Se ha desactivado el modo lento POLICE "
+      await chat.send_message(
+         room=user.display_name,
+         text=f"POLICE Se ha desactivado el modo lento POLICE "
       )
       
 async def get_stream_info():
