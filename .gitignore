@@ -16,6 +16,7 @@ Icon
 # Token files
 tokens.json
 bot_tokens.json
+tokens_bot.json
 
 # Thumbnails
 ._*

@@ -8,9 +8,11 @@ from app.services.gemini import response_sandy
 from app.services.voice import play_audio
 
 TARGET_CHANNEL = config.CHANNEL
+BOT_CHANNEL = config.TWITCH_BOT_ACCOUNT
 chunk_size = 3
 chunk_message = []
 chat = None
+bots=['streamlabs','streamelements','nightbot',BOT_CHANNEL]
 
 async def setup_chat(twitch):
     global chat
@@ -25,22 +27,23 @@ async def on_ready(ready_event: EventData):
 
 
 async def on_message(msg: ChatMessage):
-    print(f"Mensaje recibido: {msg.room.name}")
     print(f"{msg.user.name}: {msg.text}")
-    if check_banned_words(msg.text) and msg.user.mod is False:
-        response = check_message(msg.text)
-        if response == "NO PERMITIDOS\n":
-            await auth.twitch.delete_chat_message(auth.user.id, auth.user.id, msg.id)
-            await chat.send_message(
-                msg.room.name,
-                f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
-            )
-            msg.text = "Mensaje no permitido"
+    print(f"{msg.user}")
+    if msg.user.name not in bots:
+        if check_banned_words(msg.text) and msg.user.mod is False:
+            response = check_message(msg.text)
+            if response == "NO PERMITIDOS\n":
+                await auth.twitch.delete_chat_message(auth.user.id, auth.user.id, msg.id)
+                await chat.send_message(
+                    msg.room.name,
+                    f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
+                )
+                msg.text = "Mensaje no permitido"
 
-    chunk_message.append(f"{msg.user.name}: {msg.text}")
-    if len(chunk_message) >= chunk_size:
-        message_str=",".join(chunk_message)
+        chunk_message.append(f"{msg.user.name}: {msg.text}")
+        if len(chunk_message) >= chunk_size:
+            message_str=",".join(chunk_message)
 
-        response = response_sandy(message_str)
-        play_audio(response)
-        chunk_message.clear()
+            response = response_sandy(message_str)
+            play_audio(response)
+            chunk_message.clear()
