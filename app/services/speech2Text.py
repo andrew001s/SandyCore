@@ -8,6 +8,7 @@ import google.api_core.exceptions
 import time
 from app.services.gemini import response_sandy_shandrew
 from app.services.voice import play_audio
+import app.shared.state as state
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "app/data/secret.json"
 client = speech.SpeechClient()
@@ -18,7 +19,6 @@ SAMPLE_RATE = 16000
 CHANNELS = 1
 FORMAT = np.int16
 audio_queue = queue.Queue(maxsize=10)
-is_paused = False
 is_running = True
 
 
@@ -26,7 +26,7 @@ def callback(indata, frames, time, status):
     if status:
         print(status)
 
-    if not is_paused:
+    if not state.is_paused:
         try:
             audio_queue.put(bytes(indata), timeout=1)
         except queue.Full:
@@ -74,18 +74,16 @@ def transcribir_audio():
 
 
 def pause():
-    global is_paused
-    if not is_paused:
-        is_paused = True
+    if not state.is_paused:
+        state.is_paused = True
         print("🔇 Micrófono pausado manualmente.")
-    return is_paused
+    return state.is_paused
 
 def resume():
-    global is_paused
-    if is_paused:
-        is_paused = False
+    if state.is_paused:
+        state.is_paused = False
         print("🎤 Micrófono reanudado manualmente.")
-    return is_paused
+    return state.is_paused
 
 def get_status():
-    return not is_paused 
+    return not state.is_paused 
