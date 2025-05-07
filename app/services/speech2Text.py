@@ -3,7 +3,6 @@ import queue
 import sounddevice as sd
 import numpy as np
 import asyncio
-import keyboard  
 from google.cloud import speech_v1p1beta1 as speech
 import google.api_core.exceptions
 import time
