@@ -1,6 +1,7 @@
 import app.services.twitch.auth.auth as auth
-from app.services.twitch.chat.chat_handler import setup_chat
-from app.services.twitch.events.eventsub_handler import setup_eventsub
+import twitchAPI.type as type
+from app.services.twitch.chat.chat_handler import setup_chat, close_chat
+from app.services.twitch.events.eventsub_handler import setup_eventsub, close_eventsub
 from app.models.ProfileModel import ProfileModel
 
 
@@ -10,7 +11,12 @@ async def run_bot(bot: bool = False):
         await setup_chat(twitch_bot)
     else:
         await setup_chat(twitch)
-    await setup_eventsub(twitch, user_id)
+    try:
+        await setup_eventsub(twitch, user_id)
+    except type.EventSubSubscriptionError as e:
+        pass
+    except Exception as e:
+        print(f"Error al iniciar EventSub: {e}")
 
 
 async def get_user_profile() -> dict:
@@ -22,3 +28,8 @@ async def get_user_profile() -> dict:
         picProfile=user.profile_image_url,
     )
     return profile.model_dump() 
+
+async def close_twitch():
+    await auth.close_twitch()
+    await close_chat()
+    await close_eventsub()

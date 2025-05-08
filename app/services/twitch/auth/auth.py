@@ -109,3 +109,14 @@ async def create_twitch_instance(bot: bool = False):
         return twitch,twitch_bot, user.id
     else:
         return twitch,twitch, user.id
+
+
+async def close_twitch():
+    global twitch
+    global twitch_bot
+    if twitch:
+        await twitch.close()
+    if twitch_bot:
+        await twitch_bot.close()
+    twitch = None
+    twitch_bot = None

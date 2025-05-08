@@ -28,7 +28,6 @@ async def on_ready(ready_event: EventData):
 
 async def on_message(msg: ChatMessage):
     print(f"{msg.user.name}: {msg.text}")
-    print(f"{msg.user}")
     if msg.user.name not in bots:
         if check_banned_words(msg.text) and msg.user.mod is False:
             response = check_message(msg.text)
@@ -47,3 +46,9 @@ async def on_message(msg: ChatMessage):
             response = response_sandy(message_str)
             play_audio(response)
             chunk_message.clear()
+
+async def close_chat():
+    global chat
+    if chat:
+        chat.stop()
+        chat = None
