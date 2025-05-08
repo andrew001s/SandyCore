@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import threading
 from fastapi.responses import JSONResponse
-from app.services.twitch.twitch import run_bot
+from app.services.twitch.twitch import run_bot, get_user_profile
 from app.services.speech2Text import transcribir_audio, pause, resume, get_status
 import app.shared.state as state
 from fastapi import Response
@@ -47,6 +47,13 @@ async def start_services(bot: bool = False):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@app.get("/get-profile")
+async def get_profile():
+    try:
+        profile = await get_user_profile()
+        return JSONResponse(status_code=200, content={"profile": profile})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/pause")
 def pause_microphone():
