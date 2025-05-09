@@ -42,7 +42,9 @@ async def start_services(bot: bool = False):
             return Response(status_code=204)
         state.conected = True
         threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
-        threading.Thread(target=transcribir_audio_thread, daemon=True).start()
+        if not hasattr(state, "audio_thread_started") or not state.audio_thread_started:
+            threading.Thread(target=transcribir_audio_thread, daemon=True).start()
+            state.audio_thread_started = True
         return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
