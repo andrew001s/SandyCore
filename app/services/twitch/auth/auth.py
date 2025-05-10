@@ -63,7 +63,7 @@ async def refresh_access_token(twitch, refresh_token):
 async def create_twitch_instance(bot: bool = False):
     global twitch
     global user
-
+    global user_bot
     twitch_client = await Twitch(config.ID, config.SECRET)
     tokens = await load_tokens()
     
@@ -104,6 +104,7 @@ async def create_twitch_instance(bot: bool = False):
     user = await first(twitch_client.get_users(logins=[config.CHANNEL]))
     twitch = twitch_client
     if bot:
+        global user_bot
         twitch_bot = bot_twitch_client
         user_bot = await first(twitch_bot.get_users(logins=[config.TWITCH_BOT_ACCOUNT]))
         return twitch,twitch_bot, user.id

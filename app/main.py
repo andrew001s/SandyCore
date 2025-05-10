@@ -39,6 +39,9 @@ def transcribir_audio_thread():
 async def start_services(bot: bool = False):
     try:
         if state.conected:
+            if bot: 
+                await close_twitch()  
+                threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
             return Response(status_code=204)
         state.conected = True
         threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
@@ -50,19 +53,21 @@ async def start_services(bot: bool = False):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/get-profile")
-async def get_profile():
+async def get_profile(bot: bool = False):
     try:
-        profile = await get_user_profile()
+        profile = await get_user_profile(bot)
         return JSONResponse(status_code=200, content={"profile": profile})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/stop")
-async def stop_services():
+async def stop_services(bot: bool = False):
     try:
         state.conected = False
         state.is_paused = False
         await close_twitch()
+        if bot:
+            threading.Thread(target=run_bot_thread, args=(False,), daemon=True).start()
         return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
