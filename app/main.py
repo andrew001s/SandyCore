@@ -8,40 +8,15 @@ from app.services.speech2Text import transcribir_audio, pause, resume, get_statu
 import app.shared.state as state
 from fastapi import Response
 from app.controllers.http.test_router import router as test_router
+from app.controllers.http.twitch_router import router as twitch_router
 
 
 app = FastAPI()
 configure_cors(app)
 
 app.include_router(test_router)
-
-
-def run_bot_thread(bot: bool):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_bot(bot))
-
-
-def transcribir_audio_thread():
-    transcribir_audio()
-
-
-@app.get("/start")
-async def start_services(bot: bool = False):
-    try:
-        if state.conected:
-            if bot: 
-                await close_twitch()  
-                threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
-            return Response(status_code=204)
-        state.conected = True
-        threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
-        if not hasattr(state, "audio_thread_started") or not state.audio_thread_started:
-            threading.Thread(target=transcribir_audio_thread, daemon=True).start()
-            state.audio_thread_started = True
-        return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+app.include_router(twitch_router)
+        
 
 @app.get("/get-profile")
 async def get_profile(bot: bool = False):
@@ -80,8 +55,3 @@ def resume_microphone():
         content={"status": "Micrófono reanudado", "paused": not state.is_paused},
     )
 
-
-@app.get("/mic-status")
-def mic_status():
-    get_status()
-    return {"status": "activo" if state else "pausado", "paused": not state.is_paused}

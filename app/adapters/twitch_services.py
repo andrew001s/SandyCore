@@ -1,0 +1,19 @@
+from app.services.twitch.twitch import auth, setup_eventsub,setup_chat, close_chat
+import twitchAPI.type as type
+from app.domain.exceptions import EventSubError
+
+class TwitchService:
+    async def create_instance(self, bot: bool = False):
+        return await auth.create_twitch_instance(bot)
+
+    async def setup_chat(self, twitch_obj):
+        await setup_chat(twitch_obj)
+
+    async def close_chat(self):
+        await close_chat()
+
+    async def setup_eventsub(self, twitch, user_id):
+        try:
+            await setup_eventsub(twitch, user_id)
+        except type.EventSubSubscriptionError as e:
+            raise EventSubError(str(e))
