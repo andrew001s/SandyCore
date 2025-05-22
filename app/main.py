@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from app.config.cors import configure_cors
 import asyncio
 import threading
 from fastapi.responses import JSONResponse
@@ -7,22 +7,13 @@ from app.services.twitch.twitch import run_bot, get_user_profile, close_twitch
 from app.services.speech2Text import transcribir_audio, pause, resume, get_status
 import app.shared.state as state
 from fastapi import Response
+from app.controllers.http.test_router import router as test_router
 
 
 app = FastAPI()
+configure_cors(app)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Sandy IA corriendo🚀"}
+app.include_router(test_router)
 
 
 def run_bot_thread(bot: bool):
