@@ -4,23 +4,6 @@ from app.services.twitch.chat.chat_handler import setup_chat, close_chat
 from app.services.twitch.events.eventsub_handler import setup_eventsub, close_eventsub
 from app.models.ProfileModel import ProfileModel
 
-
-async def run_bot(bot: bool = False):
-    twitch, twitch_bot, user_id = await auth.create_twitch_instance(bot)
-    if bot:
-        await setup_chat(twitch_bot)
-    else:
-        if twitch:
-            await close_chat()
-        await setup_chat(twitch)
-    try:
-        await setup_eventsub(twitch, user_id)
-    except type.EventSubSubscriptionError as e:
-        pass
-    except Exception as e:
-        print(f"Error al iniciar EventSub: {e}")
-
-
 async def get_user_profile(bot=False) -> dict:
     if not bot:
         user = auth.user

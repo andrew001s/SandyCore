@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from app.config.cors import configure_cors
-import asyncio
 import threading
 from fastapi.responses import JSONResponse
-from app.services.twitch.twitch import run_bot, get_user_profile, close_twitch
-from app.services.speech2Text import transcribir_audio, pause, resume, get_status
+from app.services.twitch.twitch import get_user_profile, close_twitch
+from app.services.speech2Text import pause, resume
 import app.shared.state as state
-from fastapi import Response
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
 
