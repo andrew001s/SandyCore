@@ -7,6 +7,7 @@ from app.services.speech2Text import pause, resume
 import app.shared.state as state
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
+from app.controllers.http.gemini_router import router as gemini_router
 
 
 app = FastAPI()
@@ -14,6 +15,7 @@ configure_cors(app)
 
 app.include_router(test_router)
 app.include_router(twitch_router)
+app.include_router(gemini_router)
         
 
 @app.get("/get-profile")

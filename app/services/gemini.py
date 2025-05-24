@@ -186,7 +186,7 @@ def response_sandy(message: str) -> str:
     return response
 
 async def response_sandy_shandrew(message: str) -> str:
-    response_assist= client_gemini_order(
+    response_assist = client_gemini_order(
         message,
         prompt=PROMPT_ASSIST
     )
@@ -195,18 +195,16 @@ async def response_sandy_shandrew(message: str) -> str:
 
     if response_assist.type == "orden":
         await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
-        response = client_gemini(
+        return client_gemini(
             message,
             PROMPT_VTUBER + PERSONALITY
         )
-        return response
     elif response_assist.type == "statistics":
-        stadistics=await get_stream_info()
-        response = client_gemini(
+        stadistics = await get_stream_info()
+        return client_gemini(
             str(stadistics),
             PROMPT_GET_STATISTICS
         )
-        return response
     elif response_assist.type == "interacción":
         add_to_history("shandrew:"+message)  
         response = client_gemini(
