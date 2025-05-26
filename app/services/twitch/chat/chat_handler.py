@@ -6,6 +6,8 @@ from app.services.gemini import check_message
 import app.services.twitch.auth.auth as auth
 from app.services.gemini import response_sandy
 from app.services.voice import play_audio
+from app.controllers.websocket.websocket_server import manager
+from datetime import datetime
 
 TARGET_CHANNEL = config.CHANNEL
 BOT_CHANNEL = config.TWITCH_BOT_ACCOUNT
@@ -24,6 +26,14 @@ async def setup_chat(twitch):
 async def on_ready(ready_event: EventData):
     print("Bot is ready for work, joining channels")
     await ready_event.chat.join_room(TARGET_CHANNEL)
+    
+    # Enviar mensaje de prueba por WebSocket cuando el chat se inicia
+    await manager.broadcast({
+        "type": "chat_connected",
+        "message": "Chat de Twitch conectado y listo",
+        "channel": TARGET_CHANNEL,
+        "timestamp": datetime.now().isoformat()
+    })
 
 
 async def on_message(msg: ChatMessage):
@@ -41,10 +51,17 @@ async def on_message(msg: ChatMessage):
 
         chunk_message.append(f"{msg.user.name}: {msg.text}")
         if len(chunk_message) >= chunk_size:
-            message_str=",".join(chunk_message)
-
+            message_str = ",".join(chunk_message)
             response = response_sandy(message_str)
-            play_audio(response)
+            
+            # Enviar la respuesta por WebSocket
+            await manager.broadcast({
+                "type": "twitch_response",
+                "messages": chunk_message,
+                "response": response,
+                "timestamp": datetime.now().isoformat()
+            })
+            
             chunk_message.clear()
 
 async def close_chat():
