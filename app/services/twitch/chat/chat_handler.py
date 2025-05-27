@@ -2,19 +2,18 @@ from twitchAPI.chat import Chat, ChatEvent
 from twitchAPI.chat import EventData, ChatMessage
 from app.core.config import config
 from app.services.moderator import check_banned_words
-from app.services.gemini import check_message
+from app.services.gemini import check_message, response_sandy
 import app.services.twitch.auth.auth as auth
-from app.services.gemini import response_sandy
-from app.services.voice import play_audio
-from app.controllers.websocket.websocket_server import manager
-from datetime import datetime
+from app.core.use_cases.chat_use_case import ChatUseCase
+from app.adapters.websocket_adapter import WebsocketAdapter
 
 TARGET_CHANNEL = config.CHANNEL
 BOT_CHANNEL = config.TWITCH_BOT_ACCOUNT
-chunk_size = 3
-chunk_message = []
 chat = None
-bots=['streamlabs','streamelements','nightbot',BOT_CHANNEL]
+bots = ['streamlabs', 'streamelements', 'nightbot', BOT_CHANNEL]
+
+# Inicializar el caso de uso con el adaptador
+chat_use_case = ChatUseCase(WebsocketAdapter())
 
 async def setup_chat(twitch):
     global chat
@@ -26,15 +25,7 @@ async def setup_chat(twitch):
 async def on_ready(ready_event: EventData):
     print("Bot is ready for work, joining channels")
     await ready_event.chat.join_room(TARGET_CHANNEL)
-    
-    # Enviar mensaje de prueba por WebSocket cuando el chat se inicia
-    await manager.broadcast({
-        "type": "chat_connected",
-        "message": "Chat de Twitch conectado y listo",
-        "channel": TARGET_CHANNEL,
-        "timestamp": datetime.now().isoformat()
-    })
-
+    await chat_use_case.notify_chat_connected(TARGET_CHANNEL)
 
 async def on_message(msg: ChatMessage):
     print(f"{msg.user.name}: {msg.text}")
@@ -48,21 +39,11 @@ async def on_message(msg: ChatMessage):
                     f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
                 )
                 msg.text = "Mensaje no permitido"
+                return
 
-        chunk_message.append(f"{msg.user.name}: {msg.text}")
-        if len(chunk_message) >= chunk_size:
-            message_str = ",".join(chunk_message)
-            response = response_sandy(message_str)
-            
-            # Enviar la respuesta por WebSocket
-            await manager.broadcast({
-                "type": "twitch_response",
-                "messages": chunk_message,
-                "response": response,
-                "timestamp": datetime.now().isoformat()
-            })
-            
-            chunk_message.clear()
+        message_str = f"{msg.user.name}: {msg.text}"
+        response = response_sandy(message_str)
+        await chat_use_case.handle_message(msg.user.name, msg.text, response)
 
 async def close_chat():
     global chat
