@@ -1,6 +1,5 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from app.config.cors import configure_cors
 import threading
 from app.services.twitch.twitch import get_user_profile, close_twitch

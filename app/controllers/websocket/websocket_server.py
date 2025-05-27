@@ -2,6 +2,12 @@ from fastapi import WebSocket, WebSocketDisconnect
 from typing import List, Dict, Any
 import json
 from datetime import datetime
+from app.models.websocket_models import (
+    ChatMessage, 
+    ErrorMessage, 
+    ConnectionMessage, 
+    NotificationMessage
+)
 
 class ConnectionManager:
     def __init__(self):
@@ -30,47 +36,59 @@ manager = ConnectionManager()
 async def handle_websocket(websocket: WebSocket):
     client_id = await manager.connect(websocket)
     try:
-        # Enviar mensaje de bienvenida
-        await manager.send_personal_message({
-            "type": "connection_established",
-            "client_id": client_id,
-            "message": "Conectado al servidor WebSocket",
-            "timestamp": datetime.now().isoformat()
-        }, websocket)
+        # Enviar mensaje de bienvenida usando el modelo
+        welcome_message = ConnectionMessage(
+            type="connection_established",
+            client_id=client_id,
+            message="Conectado al servidor WebSocket"
+        )
+        await manager.send_personal_message(welcome_message.dict(), websocket)
 
         while True:
             try:
-                # Recibir datos como texto y convertir a JSON
+                # Recibir datos y convertir según el tipo de mensaje
                 data = await websocket.receive_text()
                 message_data = json.loads(data)
                 
-                # Procesar el mensaje según su tipo
-                if "type" not in message_data:
-                    message_data["type"] = "message"
-                    
-                # Añadir metadatos al mensaje
-                response = {
-                    **message_data,
-                    "client_id": client_id,
-                    "timestamp": datetime.now().isoformat()
-                }
+                message_type = message_data.get("type", "chat")
                 
-                # Broadcast del mensaje a todos los clientes
-                await manager.broadcast(response)
+                if message_type == "chat":
+                    message = ChatMessage(
+                        type=message_type,
+                        client_id=client_id,
+                        messages=message_data.get("messages", []),
+                        response=message_data.get("response", "")
+                    )
+                elif message_type == "notification":
+                    message = NotificationMessage(
+                        type=message_type,
+                        client_id=client_id,
+                        event_type=message_data.get("event_type", ""),
+                        data=message_data.get("data", {})
+                    )
+                else:
+                    message = ConnectionMessage(
+                        type=message_type,
+                        client_id=client_id,
+                        message=message_data.get("message", "")
+                    )
+                
+                # Broadcast usando el modelo
+                await manager.broadcast(message.dict())
                 
             except json.JSONDecodeError:
-                # Si el mensaje no es JSON válido, enviar error
-                await manager.send_personal_message({
-                    "type": "error",
-                    "message": "Formato JSON inválido",
-                    "timestamp": datetime.now().isoformat()
-                }, websocket)
+                error_message = ErrorMessage(
+                    type="error",
+                    client_id=client_id,
+                    message="Formato JSON inválido"
+                )
+                await manager.send_personal_message(error_message.dict(), websocket)
                 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
-        # Notificar a otros clientes de la desconexión
-        await manager.broadcast({
-            "type": "client_disconnected",
-            "client_id": client_id,
-            "timestamp": datetime.now().isoformat()
-        })
+        disconnect_message = ConnectionMessage(
+            type="client_disconnected",
+            client_id=client_id,
+            message="Cliente desconectado"
+        )
+        await manager.broadcast(disconnect_message.dict())
