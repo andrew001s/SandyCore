@@ -37,17 +37,6 @@ async def get_profile(bot: bool = False):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-@app.get("/stop")
-async def stop_services(bot: bool = False):
-    try:
-        state.conected = False
-        state.is_paused = False
-        await close_twitch()
-        if bot:
-            threading.Thread(target=run_bot_thread, args=(False,), daemon=True).start()
-        return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/pause")
 def pause_microphone():

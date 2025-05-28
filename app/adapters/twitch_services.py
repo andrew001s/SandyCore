@@ -1,4 +1,4 @@
-from app.services.twitch.twitch import auth, setup_eventsub,setup_chat, close_chat
+from app.services.twitch.twitch import auth, setup_eventsub,setup_chat, close_chat, close_eventsub
 import twitchAPI.type as type
 from app.domain.exceptions import EventSubError
 
@@ -17,3 +17,9 @@ class TwitchService:
             await setup_eventsub(twitch, user_id)
         except type.EventSubSubscriptionError as e:
             raise EventSubError(str(e))
+    
+    async def close_twitch(self):
+        await auth.close_twitch()
+    
+    async def close_eventsub(self):
+        await close_eventsub()
