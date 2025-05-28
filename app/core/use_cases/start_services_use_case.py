@@ -8,8 +8,7 @@ class StartServicesUseCase:
     async def execute(self, bot: bool = False):
         twitch, twitch_bot, user_id = await self.twitch_service.create_instance(bot)
         
-        if bot:
-            await self.twitch_service.close_chat()
+        if bot:            
             await self.twitch_service.setup_chat(twitch_bot)
         else:
             await self.twitch_service.setup_chat(twitch)
