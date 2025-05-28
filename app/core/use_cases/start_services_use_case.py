@@ -9,9 +9,9 @@ class StartServicesUseCase:
         twitch, twitch_bot, user_id = await self.twitch_service.create_instance(bot)
         
         if bot:
+            await self.twitch_service.close_chat()
             await self.twitch_service.setup_chat(twitch_bot)
         else:
-            await self.twitch_service.close_chat()
             await self.twitch_service.setup_chat(twitch)
 
         try:
