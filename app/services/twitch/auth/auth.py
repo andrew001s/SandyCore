@@ -77,7 +77,7 @@ async def create_twitch_instance(bot: bool = False):
             await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
         print("Token cargado para la cuenta principal.")
     else:
-        auth = UserAuthenticator(twitch_client, USER_SCOPE, force_verify=True)
+        auth = UserAuthenticator(twitch_client, USER_SCOPE)
         token, refresh_token = await auth.authenticate()
         await save_tokens(token, refresh_token)
         await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
@@ -96,7 +96,7 @@ async def create_twitch_instance(bot: bool = False):
                 await bot_twitch_client.set_user_authentication(bot_token, USER_SCOPE, bot_refresh_token)
             print("Token cargado para la cuenta bot.")
         else:
-            bot_auth = UserAuthenticator(bot_twitch_client, USER_SCOPE, force_verify=True)
+            bot_auth = UserAuthenticator(bot_twitch_client, USER_SCOPE)
             bot_token, bot_refresh_token = await bot_auth.authenticate()
             await save_bot_tokens(bot_token, bot_refresh_token)  # Guarda los tokens en el archivo específico del bot
             await bot_twitch_client.set_user_authentication(bot_token, USER_SCOPE, bot_refresh_token)

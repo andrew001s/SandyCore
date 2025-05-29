@@ -1,4 +1,3 @@
-from typing import List, Optional
 from datetime import datetime
 from app.core.ports.websocket_port import WebsocketPort
 
