@@ -1,14 +1,14 @@
 from app.adapters.twitch_services import TwitchService
 from app.domain.exceptions import EventSubError
 
-class StartServicesCase:
+class AuthUseCase:
     def __init__(self, twitch_service: TwitchService):
         self.twitch_service = twitch_service
     
-    async def execute(self,bot: bool = False):
-        twitch, twitch_bot, user_id = await self.twitch_service.return_instance(bot)
-        print(f"Instancias de Twitch obtenidas: {twitch}, {twitch_bot}, User ID: {user_id}")
-        if bot:            
+    async def execute(self,token,refresh_token, bot: bool = False):
+        twitch, twitch_bot, user_id = await self.twitch_service.create_instance(token, refresh_token,bot)
+        return twitch, twitch_bot, user_id
+        """if bot:            
             await self.twitch_service.setup_chat(twitch_bot)
         else:
             await self.twitch_service.setup_chat(twitch)
@@ -18,4 +18,4 @@ class StartServicesCase:
         except EventSubError:
             pass 
         except Exception as e:
-            print(f"Error al iniciar EventSub: {e}")
+            print(f"Error al iniciar EventSub: {e}")"""
