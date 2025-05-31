@@ -64,6 +64,7 @@ async def create_twitch_instance(bot: bool = False,token: str = None, refresh_to
     global twitch
     global user
     global user_bot
+    global twitch_bot
     #tokens = await load_tokens()
     
     """if tokens:
@@ -102,31 +103,27 @@ async def create_twitch_instance(bot: bool = False,token: str = None, refresh_to
             print("Nuevo token generado y guardado para la cuenta bot.")
             """
         await bot_twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
-    else: 
-        twitch_client = await Twitch(config.ID, config.SECRET)
-        await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
-
-
-    user = await first(twitch_client.get_users(logins=[config.CHANNEL]))
-    twitch = twitch_client
-    if bot:
-        global user_bot
         twitch_bot = bot_twitch_client
         user_bot = await first(twitch_bot.get_users(logins=[config.TWITCH_BOT_ACCOUNT]))
         return twitch,twitch_bot, user.id
-    else:
-        return twitch,twitch, user.id
+    else: 
+        twitch_client = await Twitch(config.ID, config.SECRET)
+        await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
+        user = await first(twitch_client.get_users(logins=[config.CHANNEL]))
+        twitch = twitch_client
+        return twitch, twitch, user.id
 
 async def get_profile_users(bot: bool = False):
     global twitch
     global twitch_bot
     global user_bot
+    global user
     user = await first(twitch.get_users())
     if bot:
         user_bot = await first(twitch_bot.get_users())
-        return twitch,twitch_bot, user.id,user, user_bot
+        return user_bot
     else:
-        return twitch,twitch, user.id,user,user
+        return user
 
 async def return_twitch_instance(bot: bool = False):
     global twitch

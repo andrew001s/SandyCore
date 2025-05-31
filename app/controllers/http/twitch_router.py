@@ -5,6 +5,7 @@ from app.core.use_cases.auth_use_case import AuthUseCase
 from app.core.use_cases.start_services_use_case import StartServicesCase
 from app.core.use_cases.stop_services_use_case import StopServicesUseCase
 from app.models.twitch_auth_model import TwitchAuth
+from app.core.use_cases.get_profile import GetProfileUseCase
 
 router = APIRouter()
 use_case_auth = AuthUseCase(TwitchService())
@@ -46,3 +47,12 @@ async def stop_services(bot: bool = False):
         return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+    
+@router.get("/profile")
+async def get_profile(bot: bool = False):
+    try:
+        use_case = GetProfileUseCase(TwitchService())
+        user = await use_case.execute(bot)
+        return JSONResponse(status_code=200, content={"profile": user})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)}) 

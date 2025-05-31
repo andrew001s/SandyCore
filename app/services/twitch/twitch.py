@@ -5,29 +5,22 @@ from app.services.twitch.events.eventsub_handler import setup_eventsub, close_ev
 from app.models.ProfileModel import ProfileModel
 
 async def get_user_profile(bot=False) -> dict:
-    if not bot:
-        user = auth.user
-        profile = ProfileModel(
-            id=user.id,
-            username=user.display_name,
-            email=user.email,
-            picProfile=user.profile_image_url,
-        )
-        return profile.model_dump() 
-    else:
-        user = auth.user_bot
-        profile = ProfileModel(
-            id=user.id,
-            username=user.display_name,
-            email=user.email,
-            picProfile=user.profile_image_url,
-        )
-        return profile.model_dump()
+    try:
+        user = auth.user_bot if bot else auth.user
+        if user is None:
+            raise Exception("Usuario no autenticado")
+        return user
+    except Exception as e:
+        raise Exception(f"Error al obtener el perfil: {str(e)}")
 
 async def close_twitch():
     await auth.close_twitch()
     await close_chat_instance()
     await close_eventsub()
-    
+
+async def start_bot():
+    await close_chat_instance()
+    await close_eventsub()
+
 async def close_chat_instance():
     await close_chat()

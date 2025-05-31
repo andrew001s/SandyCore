@@ -6,3 +6,4 @@ class ProfileModel(BaseModel):
     username: str
     email: str
     picProfile: str
+    broadcaster_type: Optional[str] = None

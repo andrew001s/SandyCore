@@ -1,11 +1,29 @@
 from app.services.twitch.twitch import auth, setup_eventsub,setup_chat, close_chat, close_eventsub
 import twitchAPI.type as type
 from app.domain.exceptions import EventSubError
+from app.models.ProfileModel import ProfileModel
 
 class TwitchService:
     async def create_instance(self,  token: str = None, refresh_token: str = None,bot: bool = False,):
         return await auth.create_twitch_instance(bot, token, refresh_token)
 
+    async def get_profile(self, bot: bool = False):
+        user = await auth.get_profile_users(bot)
+        if user is None:
+            raise Exception("Usuario no autenticado")
+        
+        try:
+            profile = ProfileModel(
+                id=int(user.id),
+                username=str(user.display_name),
+                email=str(user.email),
+                picProfile=str(user.profile_image_url),
+                broadcaster_type=str(user.broadcaster_type),
+            )
+            return profile.model_dump()
+        except Exception as e:
+            raise Exception(f"Error al mapear el perfil: {str(e)}")
+    
     async def return_instance(self, bot: bool = False):
         return await auth.return_twitch_instance(bot)
     
