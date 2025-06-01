@@ -44,3 +44,12 @@ class TwitchService:
     
     async def close_eventsub(self):
         await close_eventsub()
+        
+    async def get_tokens(self, bot: bool = False):
+       return await auth.get_tokens(bot)
+   
+    async def save_tokens(self, bot: bool = False, token: str = None, refresh_token: str = None):
+        if not bot:
+            return await auth.save_tokens(token, refresh_token)
+        else:
+            return await auth.save_bot_tokens(token, refresh_token)
