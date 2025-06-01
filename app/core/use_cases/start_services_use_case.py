@@ -7,14 +7,16 @@ class StartServicesCase:
     
     async def execute(self,bot: bool = False):
         twitch, twitch_bot, user_id = await self.twitch_service.return_instance(bot)
-        print(f"Instancias de Twitch obtenidas: {twitch}, {twitch_bot}, User ID: {user_id}")
         if bot:            
             await self.twitch_service.setup_chat(twitch_bot)
         else:
             await self.twitch_service.setup_chat(twitch)
 
         try:
-            await self.twitch_service.setup_eventsub(twitch, user_id)
+            if bot:
+                await self.twitch_service.setup_eventsub(twitch_bot, user_id)
+            else:
+                await self.twitch_service.setup_eventsub(twitch, user_id)
         except EventSubError:
             pass 
         except Exception as e:

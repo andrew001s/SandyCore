@@ -10,13 +10,14 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 TARGET_CHANNEL = config.CHANNEL
 BOT_CHANNEL = config.TWITCH_BOT_ACCOUNT
 chat = None
+twitch = None
 bots = ['streamlabs', 'streamelements', 'nightbot', BOT_CHANNEL]
-
-# Inicializar el caso de uso con el adaptador
 chat_use_case = ChatUseCase(WebsocketAdapter())
 
-async def setup_chat(twitch):
+async def setup_chat(twitch_instance):
     global chat
+    global twitch
+    twitch = twitch_instance
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
@@ -33,7 +34,7 @@ async def on_message(msg: ChatMessage):
         if check_banned_words(msg.text) and msg.user.mod is False:
             response = check_message(msg.text)
             if response == "NO PERMITIDOS\n":
-                await auth.twitch.delete_chat_message(auth.user.id, auth.user.id, msg.id)
+                await twitch.delete_chat_message(auth.user.id, auth.user.id, msg.id)
                 await chat.send_message(
                     msg.room.name,
                     f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
