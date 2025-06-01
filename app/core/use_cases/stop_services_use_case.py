@@ -6,5 +6,4 @@ class StopServicesUseCase:
 
     async def execute(self):
         await self.twitch_service.close_chat()
-        await self.twitch_service.close_eventsub()
         

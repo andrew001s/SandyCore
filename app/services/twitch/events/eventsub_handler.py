@@ -13,21 +13,22 @@ eventsubUseCase = EventSubUseCase(WebsocketAdapter())
 
 async def setup_eventsub(twitch, user_id):
     global eventsubInstance
-    eventsubInstance = EventSubWebsocket(twitch)
-    eventsubInstance.start()
-    await eventsubInstance.listen_channel_points_custom_reward_redemption_add(
-        broadcaster_user_id=user_id, callback=chanel_points
-    )
-    await eventsubInstance.listen_channel_follow_v2(user_id, user_id, on_follow)
-    await eventsubInstance.listen_channel_subscribe(user_id, on_subscribe)
-    await eventsubInstance.listen_channel_subscription_message(
-        user_id, on_subscribe_message
-    )
-    await eventsubInstance.listen_channel_subscription_gift(user_id, on_sub_gift)
-    await eventsubInstance.listen_channel_cheer(user_id, on_cheer)
-    await eventsubInstance.listen_channel_raid(
-        to_broadcaster_user_id=user_id, callback=on_raid
-    )
+    if eventsubInstance is None:
+        eventsubInstance = EventSubWebsocket(twitch)
+        eventsubInstance.start()
+        await eventsubInstance.listen_channel_points_custom_reward_redemption_add(
+            broadcaster_user_id=user_id, callback=chanel_points
+        )
+        await eventsubInstance.listen_channel_follow_v2(user_id, user_id, on_follow)
+        await eventsubInstance.listen_channel_subscribe(user_id, on_subscribe)
+        await eventsubInstance.listen_channel_subscription_message(
+            user_id, on_subscribe_message
+        )
+        await eventsubInstance.listen_channel_subscription_gift(user_id, on_sub_gift)
+        await eventsubInstance.listen_channel_cheer(user_id, on_cheer)
+        await eventsubInstance.listen_channel_raid(
+            to_broadcaster_user_id=user_id, callback=on_raid
+        )
 
 
 async def chanel_points(msg: ChannelPointsCustomRewardRedemptionAddEvent):

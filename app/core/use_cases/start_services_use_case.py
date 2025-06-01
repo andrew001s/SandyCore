@@ -13,10 +13,7 @@ class StartServicesCase:
             await self.twitch_service.setup_chat(twitch)
 
         try:
-            if bot:
-                await self.twitch_service.setup_eventsub(twitch_bot, user_id)
-            else:
-                await self.twitch_service.setup_eventsub(twitch, user_id)
+            await self.twitch_service.setup_eventsub(twitch, user_id)
         except EventSubError:
             pass 
         except Exception as e:
