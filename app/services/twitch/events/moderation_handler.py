@@ -2,6 +2,7 @@ from app.services.twitch.auth.auth import twitch,user
 from app.services.twitch.chat.chat_handler import chat
 import json
 
+
 async def moderator_actions(title: str, name: str):
    try:
       match (name):

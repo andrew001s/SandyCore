@@ -123,8 +123,7 @@ async def get_profile_users(bot: bool = False):
     global user_bot
     global user
     if bot:
-        user = await first(twitch_bot.get_users())
-        user_bot = user
+        user_bot = await first(twitch_bot.get_users())
         return user_bot
     else:
         user = await first(twitch.get_users())
