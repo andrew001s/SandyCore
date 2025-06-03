@@ -1,8 +1,10 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+
 from app.services.application.status_service import get_root_message
 
 router = APIRouter()
+
 
 @router.get("/")
 def read_root():

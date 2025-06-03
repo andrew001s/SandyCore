@@ -1,3 +1,2 @@
 class EventSubError(Exception):
     pass
-

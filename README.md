@@ -1,9 +1,9 @@
 # Proyecto: **Sandy Core IA**
 
-![MIT License](https://img.shields.io/badge/License-MIT-green) 
-![GPL-3.0 License](https://img.shields.io/badge/License-GPL_3.0-blue)  
+![MIT License](https://img.shields.io/badge/License-MIT-green)
+![GPL-3.0 License](https://img.shields.io/badge/License-GPL_3.0-blue)
 ![Google Gemini](https://img.shields.io/badge/Google_Cloud-4285F4?style=flat&logo=google-cloud&logoColor=white)
-[![Python](https://img.shields.io/badge/Python-14354C?style=flat&logo=python&logoColor=white)](https://www.python.org/) 
+[![Python](https://img.shields.io/badge/Python-14354C?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Twitter](https://img.shields.io/badge/Twitch-9146FF?style=flat&logo=twitch&logoColor=white)](https://www.twitch.tv/elshandrew)  [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white)](https://www.youtube.com/@shandrew)  [![TikTok](https://img.shields.io/badge/TikTok-000000?style=flat&logo=tiktok&logoColor=white)](https://www.tiktok.com/@elshandrew)
 
 Este proyecto integra el modelo para una **Vtuber IA** utilizando **FastAPI** y **hilos en Python**. Puedes iniciar los servicios de forma independiente o todos a la vez mediante una API REST.
@@ -81,7 +81,7 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 
 - **Descripción**: Inicia los servicios en segundo plano según el parámetro `service` proporcionado.
 
-- **Respuesta Exitosa**: 
+- **Respuesta Exitosa**:
 ```json
 {
   "message": "Servicios iniciados"

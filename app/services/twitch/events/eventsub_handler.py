@@ -1,15 +1,15 @@
-import twitchAPI.type as type
-from twitchAPI.eventsub.websocket import EventSubWebsocket
 import twitchAPI.object.eventsub as eventsub
+from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.object.eventsub import ChannelPointsCustomRewardRedemptionAddEvent
-from app.services.gemini import response_gemini_events, response_gemini_rewards
-from app.core.use_cases.eventsub_use_case import EventSubUseCase
-from app.adapters.websocket_adapter import WebsocketAdapter
 
+from app.adapters.websocket_adapter import WebsocketAdapter
+from app.core.use_cases.eventsub_use_case import EventSubUseCase
+from app.services.gemini import response_gemini_events, response_gemini_rewards
 
 eventsubInstance = None
 
 eventsubUseCase = EventSubUseCase(WebsocketAdapter())
+
 
 async def setup_eventsub(twitch, user_id):
     global eventsubInstance
@@ -40,7 +40,7 @@ async def chanel_points(msg: ChannelPointsCustomRewardRedemptionAddEvent):
     ):
         return
     user = msg.event.user_name
-    message= f"Redemption: {redemtion} from {user}"
+    message = f"Redemption: {redemtion} from {user}"
     redemtion_obj = '{"user": "' + user + '", "reward": "' + redemtion + '"}'
     response = response_gemini_rewards(redemtion_obj)
     await eventsubUseCase.handle_events(message, response)
@@ -48,7 +48,7 @@ async def chanel_points(msg: ChannelPointsCustomRewardRedemptionAddEvent):
 
 async def on_follow(data: eventsub.ChannelFollowEvent):
     user = data.event.user_name
-    message= f"Follow nombre_usuario: {user}"
+    message = f"Follow nombre_usuario: {user}"
     response = response_gemini_events(f"{message}")
     await eventsubUseCase.handle_events(message, response)
 

@@ -1,16 +1,21 @@
 from collections import deque
-from app.core.config import config
-from pydantic import BaseModel
+
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
+
+from app.core.config import config
 
 PERSONALITY = config.PERSONALITY
 GEMINI_API_KEY = config.GEMINI_API_KEY
 BOT_NAME = config.TWITCH_BOT_ACCOUNT
+
+
 class Order(BaseModel):
     type: str
     order_name: str
     order_objective: str
+
 
 PROMPT_MOD = """
 Eres un moderador de chat inteligente y contextual. Tu tarea es analizar cada mensaje y clasificarlo como "PERMITIDOS" o "NO PERMITIDOS", teniendo en cuenta el tono, la intención y el contexto en el que se expresa.
@@ -31,7 +36,7 @@ Responde únicamente con "PERMITIDOS" o "NO PERMITIDOS".
 El mensaje a evaluar es el siguiente:
 """
 
-PROMPT_GET_STATISTICS="""
+PROMPT_GET_STATISTICS = """
 Actúa como un analista de contenido experto en Twitch. A continuación te proporcionaré las estadísticas generales de un stream
 Con base en estos datos:
 Resume los puntos positivos del stream (cosas que funcionaron bien).
@@ -54,20 +59,20 @@ Aquí están los datos del stream:
 """
 
 PROMPT_VTUBER = """
-Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Recibe una lista de comentarios en formato usuario:comentario y responde solo 
+Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Recibe una lista de comentarios en formato usuario:comentario y responde solo
 al más interesante o gracioso. No respondas a más de un comentario, incluso si son del mismo usuario.
 No Respondas con palabras Japonesas
-Ignora mensajes no permitidos, emoticonos y réplicas a otros usuarios. No saludes a menos que te saluden. 
-No menciones al usuario a menos que sea estrictamente necesario. La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
+Ignora mensajes no permitidos, emoticonos y réplicas a otros usuarios. No saludes a menos que te saluden.
+No menciones al usuario a menos que sea estrictamente necesario. La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS,
 aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones. Vas a basar tu personalidad segun el siguiente archivo:
 
 """
 
 PROMPT_VTUBER_SHANDREW = """
 Eres Sandy, una VTuber ecuatoriana enfocada en entretener. Vas a responder Shandrew y a mantener una conversacion con el
-por lo que es importante que mantengas el contexto de la conversacion segun el historial. 
+por lo que es importante que mantengas el contexto de la conversacion segun el historial.
 No Respondas con palabras Japonesas
-La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS, 
+La respuesta debe ser clara, natural y breve (entre 15s y 2min en TTS,
 aprox. 250-1800 caracteres). Solo texto, sin emoticonos ni descripciones de acciones. Vas a basar tu personalidad segun el siguiente archivo:
 """
 
@@ -81,7 +86,7 @@ las recompensas son las siguientes:
  user: nombre_usuario, reward: nombre_recompensa
 """
 
-PROMPT_VTUBER_EVENTS= """
+PROMPT_VTUBER_EVENTS = """
 Vas a reaccionar a los eventos de canal de Twitch y a leer el mensaje si lo incluye.
 los eventos son los siguientes:
 follow: Aqui tienes que saludar a la persona que te sigue y decirle algo gracioso o interesante incluye su nombre de usuario en la respuesta.
@@ -97,7 +102,7 @@ PROMPT_ASSIST = """"
 Vas a actuar como asistente inteligente de un directo, tu tarea es clasificar si los mensajes son una orden para gestionar el stream
 Obtener información sobre el stream, como estadísticas o datos curiosos,
 o un mensaje de interacción,
-si el mensaje es una orden 
+si el mensaje es una orden
 Usa este esquema JSON para clasificar los mensajes:
 {
     'type': 'orden',
@@ -137,18 +142,19 @@ o estadísticas responde con el siguiente esquema JSON:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-history_chat: deque[str] = deque(maxlen=10) 
+history_chat: deque[str] = deque(maxlen=10)
+
 
 def client_gemini(message: str, prompt: str) -> str:
     try:
-        context = generate_context()  
+        context = generate_context()
         full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
-        
+
         chat = client.chats.create(
-            model="gemini-2.0-flash", 
+            model="gemini-2.0-flash",
             config=types.GenerateContentConfig(system_instruction=full_prompt),
         )
-        
+
         bot_response = chat.send_message(message)
         return bot_response.text
     except Exception as e:
@@ -159,69 +165,70 @@ def client_gemini_order(message: str, prompt: str) -> Order:
     try:
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=prompt+message,
+            contents=prompt + message,
             config={
-                'response_mime_type': 'application/json',
-                'response_schema': Order,
-            }
+                "response_mime_type": "application/json",
+                "response_schema": Order,
+            },
         )
         order: Order = response.parsed
-        return order 
+        return order
     except Exception as e:
         print(f"Error en client_gemini_order: {e}")
+
 
 def add_to_history(message: str):
     history_chat.append(message)
 
+
 def generate_context() -> str:
-    return '\n'.join(history_chat)
+    return "\n".join(history_chat)
+
 
 def response_sandy(message: str) -> str:
-    add_to_history("user:"+message) 
-    response = client_gemini(
-        message,
-        PROMPT_VTUBER + PERSONALITY
-    )
-    add_to_history(response) 
+    add_to_history("user:" + message)
+    response = client_gemini(message, PROMPT_VTUBER + PERSONALITY)
+    add_to_history(response)
     return response
 
+
 async def response_sandy_shandrew(message: str) -> str:
-    response_assist = client_gemini_order(
-        message,
-        prompt=PROMPT_ASSIST
-    )
+    response_assist = client_gemini_order(message, prompt=PROMPT_ASSIST)
     print("response_assist", response_assist)
-    from app.services.twitch.events.moderation_handler import moderator_actions,get_stream_info
+    from app.services.twitch.events.moderation_handler import (
+        get_stream_info,
+        moderator_actions,
+    )
 
     if response_assist.type == "orden":
-        await moderator_actions(title=response_assist.order_objective,name=response_assist.order_name)
-        return client_gemini(
-            message,
-            PROMPT_VTUBER + PERSONALITY
+        await moderator_actions(
+            title=response_assist.order_objective, name=response_assist.order_name
         )
+        return client_gemini(message, PROMPT_VTUBER + PERSONALITY)
     elif response_assist.type == "statistics":
         stadistics = await get_stream_info()
-        return client_gemini(
-            str(stadistics),
-            PROMPT_GET_STATISTICS
-        )
+        return client_gemini(str(stadistics), PROMPT_GET_STATISTICS)
     elif response_assist.type == "interacción":
-        add_to_history("shandrew:"+message)  
-        response = client_gemini(
-            message,
-            PROMPT_VTUBER_SHANDREW + PERSONALITY
-        )
-        add_to_history("bot:"+response)  
+        add_to_history("shandrew:" + message)
+        response = client_gemini(message, PROMPT_VTUBER_SHANDREW + PERSONALITY)
+        add_to_history("bot:" + response)
         return response
+
 
 def check_message(message: str) -> str:
     response = client_gemini(message, PROMPT_MOD)
     return response
 
+
 def response_gemini_rewards(message: str) -> str:
-    response = client_gemini(message, PROMPT_VTUBER+PERSONALITY+PROMPT_VTUBER_REWARDS)
+    response = client_gemini(
+        message, PROMPT_VTUBER + PERSONALITY + PROMPT_VTUBER_REWARDS
+    )
     return response
 
+
 def response_gemini_events(message: str) -> str:
-    response = client_gemini(message, PROMPT_VTUBER+PERSONALITY+PROMPT_VTUBER_EVENTS)
+    response = client_gemini(
+        message, PROMPT_VTUBER + PERSONALITY + PROMPT_VTUBER_EVENTS
+    )
     return response

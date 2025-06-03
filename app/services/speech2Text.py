@@ -1,16 +1,18 @@
+import asyncio
 import os
 import queue
-import sounddevice as sd
-import numpy as np
-import asyncio
-from google.cloud import speech_v1p1beta1 as speech
-import google.api_core.exceptions
 import time
+
+import google.api_core.exceptions
+import numpy as np
+import sounddevice as sd
+from google.cloud import speech_v1p1beta1 as speech
+
+import app.shared.state as state
 from app.services.gemini import response_sandy_shandrew
 from app.services.voice import play_audio
-import app.shared.state as state
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "app/data/secret.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "app/data/secret.json"
 client = speech.SpeechClient()
 input_device = 11
 output_device = 17
@@ -32,10 +34,11 @@ def callback(indata, frames, time, status):
         except queue.Full:
             print("La cola de audio está llena. Se omite el último paquete de audio.")
 
+
 def transcribir_audio():
     global is_running
     print("Iniciando transcripción...")
-    while is_running:  
+    while is_running:
         try:
             config = speech.RecognitionConfig(
                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -45,14 +48,21 @@ def transcribir_audio():
 
             streaming_config = speech.StreamingRecognitionConfig(config=config)
 
-            with sd.InputStream(callback=callback, channels=CHANNELS, dtype=FORMAT, samplerate=SAMPLE_RATE):
+            with sd.InputStream(
+                callback=callback,
+                channels=CHANNELS,
+                dtype=FORMAT,
+                samplerate=SAMPLE_RATE,
+            ):
 
                 def generate_requests():
                     while is_running:
                         try:
                             audio_content = audio_queue.get(timeout=1)
                             if audio_content:
-                                yield speech.StreamingRecognizeRequest(audio_content=audio_content)
+                                yield speech.StreamingRecognizeRequest(
+                                    audio_content=audio_content
+                                )
                         except queue.Empty:
                             pass
 
@@ -64,13 +74,17 @@ def transcribir_audio():
                         print("Texto transcrito:", result.alternatives[0].transcript)
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                        response_text = loop.run_until_complete(response_sandy_shandrew(result.alternatives[0].transcript))
-                        #print("Respuesta generada:", response_text)
+                        response_text = loop.run_until_complete(
+                            response_sandy_shandrew(result.alternatives[0].transcript)
+                        )
+                        # print("Respuesta generada:", response_text)
                         play_audio(response_text)
 
         except google.api_core.exceptions.OutOfRange:
-            print("Conexión perdida con Google Speech-to-Text. Intentando reconectar en 2 segundos...")
-            time.sleep(2)  
+            print(
+                "Conexión perdida con Google Speech-to-Text. Intentando reconectar en 2 segundos..."
+            )
+            time.sleep(2)
 
 
 def pause():
@@ -79,11 +93,13 @@ def pause():
         print("🔇 Micrófono pausado manualmente.")
     return state.is_paused
 
+
 def resume():
     if state.is_paused:
         state.is_paused = False
         print("🎤 Micrófono reanudado manualmente.")
     return state.is_paused
 
+
 def get_status():
-    return not state.is_paused 
+    return not state.is_paused

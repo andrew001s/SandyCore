@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
+
 from app.adapters.gemini_services import GeminiServices
+from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
 from app.models.message_model import MessageModel
 
 router = APIRouter()
