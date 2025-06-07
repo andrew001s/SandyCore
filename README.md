@@ -12,6 +12,31 @@ Este proyecto integra el modelo para una **Vtuber IA** utilizando **FastAPI** y 
 Proyecto que desarrolla una VTuber 2D interactiva impulsada por inteligencia artificial, capaz de responder en tiempo real a los espectadores, hablar con una voz clonada, animarse con Live2D y automatizar tareas de moderación durante transmisiones en vivo. Su objetivo es mejorar la experiencia de creadores de contenido y su audiencia mediante una interacción más natural, divertida y segura.
 Este proyecto permite a los usuarios iniciar servicios de para el funcionamiento del motor de una Vtuber con IA usando **FastAPI** y **hilos de Python**. Todo el proceso es manejado por un servidor ligero y escalable que puedes controlar de forma remota a través de una API REST. Este sistema se puede utilizar para crear un bot que interactúe con el público en tiempo real.
 
+### Arquitectura
+
+El proyecto sigue los principios de **Arquitectura Limpia (Clean Architecture)**, que permite una separación clara de responsabilidades y facilita la mantenibilidad y escalabilidad:
+
+- **Capa de Dominio**: Contiene la lógica de negocio central, entidades y reglas de negocio independientes de cualquier framework o tecnología.
+  - `app/domain/`: Definiciones de excepciones y mensajes del sistema.
+  - `app/models/`: Modelos de datos y entidades del dominio.
+
+- **Capa de Aplicación (Casos de Uso)**: Implementa la lógica de aplicación y coordina el flujo de datos entre las capas.
+  - `app/core/use_cases/`: Casos de uso específicos (autenticación, perfil, tokens, etc.).
+  - `app/core/ports/`: Interfaces para adaptadores externos.
+
+- **Capa de Adaptadores**: Puentes entre la aplicación y servicios o frameworks externos.
+  - `app/adapters/`: Adaptadores para servicios externos (Twitch, Gemini).
+  - `app/services/`: Implementación de servicios externos.
+
+- **Capa de Infraestructura**: Frameworks, herramientas y componentes de entrega.
+  - `app/controllers/`: Controladores HTTP y WebSocket para la API.
+  - `app/config/`: Configuración de la aplicación.
+
+Esta arquitectura permite:
+- **Testeabilidad**: Componentes aislados y fáciles de probar.
+- **Escalabilidad**: Facilidad para añadir nuevas funcionalidades sin afectar el código existente.
+- **Mantenibilidad**: Cambios en frameworks o herramientas externas no afectan a la lógica de negocio.
+
 ---
 
 ## Instalación
@@ -44,15 +69,10 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
    ```ini
      TWITCH_SECRET=your_secret_here
      TWITCH_CLIENT_ID=your_client_id_here
-     TWITCH_CHANNEL=your_channel_here
-     REDIRECT_URI=http://localhost:17563
      GEMINI_API_KEY=your_gemini_api_key_here
-     TWITCH_BOT_ACCOUNT=your_bot_account_here
-     FISH_API_KEY=your_fish_api_key_here
-     ID_VOICE=your_id_voice_here
    ```
 
-   Estas variables son necesarias para la autenticación con Twitch, configurar la cuenta del bot y otros servicios. Asegúrate de tener las credenciales correctas y los permisos necesarios antes de ejecutar el proyecto.
+   Estas variables son necesarias para la autenticación con Twitch y servicios de IA. Asegúrate de tener las credenciales correctas y los permisos necesarios antes de ejecutar el proyecto.
 
 4. **Ejecutar el servidor**:
 
@@ -119,6 +139,79 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
   "paused": false      // o true
 }
 ```
+
+### **`POST /auth`**
+- **Descripción**: Autentica el usuario con Twitch utilizando tokens OAuth.
+- **Parámetros**:
+  - `token`: Token de acceso de Twitch
+  - `refresh_token`: Token de actualización
+  - `bot`: (Booleano) Indica si la autenticación es para el bot
+
+- **Respuesta**:
+```json
+{
+  "message": "Autenticación exitosa"
+}
+```
+
+### **`GET /profile`**
+- **Descripción**: Obtiene el perfil del usuario autenticado en Twitch.
+- **Parámetros Query**:
+  - `bot`: (Booleano, opcional) Para obtener el perfil del bot
+
+- **Respuesta**:
+```json
+{
+  "profile": {
+    "id": 123456789,
+    "username": "nombre_usuario",
+    "email": "correo@ejemplo.com",
+    "picProfile": "https://url-de-imagen.com/avatar.jpg"
+  }
+}
+```
+
+### **`GET /stop`**
+- **Descripción**: Detiene los servicios en ejecución.
+- **Parámetros Query**:
+  - `bot`: (Booleano, opcional) Para detener servicios del bot
+
+- **Respuesta**:
+```json
+{
+  "message": "Servicios detenidos"
+}
+```
+
+---
+
+## Arquitectura Técnica
+
+### Estructura de Carpetas
+
+```
+app/
+├── adapters/          # Adaptadores para servicios externos
+├── config/            # Configuración de la aplicación
+├── controllers/       # Controladores HTTP y WebSocket
+├── core/              # Casos de uso y puertos
+│   ├── ports/         # Interfaces para adaptadores
+│   └── use_cases/     # Implementación de casos de uso
+├── data/              # Datos estáticos y configuraciones
+├── domain/            # Excepciones y mensajes del dominio
+├── models/            # Modelos de datos
+├── services/          # Servicios externos
+│   ├── application/   # Servicios de la aplicación
+│   └── twitch/        # Servicios relacionados con Twitch
+└── shared/            # Estado compartido y utilidades
+```
+
+### Flujo de Datos
+
+1. Los **controladores** (`/controllers`) reciben solicitudes y las dirigen a los casos de uso apropiados.
+2. Los **casos de uso** (`/core/use_cases`) implementan la lógica de negocio y coordinan entre adaptadores.
+3. Los **adaptadores** (`/adapters`) conectan con servicios externos como Twitch y Gemini.
+4. Los **modelos** (`/models`) definen las estructuras de datos utilizadas en toda la aplicación.
 
 ---
 
