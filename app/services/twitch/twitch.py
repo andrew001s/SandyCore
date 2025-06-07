@@ -1,6 +1,6 @@
 import app.services.twitch.auth.auth as auth
-from app.services.twitch.chat.chat_handler import close_chat
-from app.services.twitch.events.eventsub_handler import close_eventsub
+from app.services.twitch.chat.chat_handler import close_chat, setup_chat
+from app.services.twitch.events.eventsub_handler import close_eventsub, setup_eventsub
 
 
 async def get_user_profile(bot=False) -> dict:
@@ -26,3 +26,14 @@ async def start_bot():
 
 async def close_chat_instance():
     await close_chat()
+
+
+async def setup_chat_instance(twitch_obj):
+    await setup_chat(twitch_obj)
+
+
+async def setup_eventsub_instance(twitch, user_id):
+    try:
+        await setup_eventsub(twitch, user_id)
+    except Exception as e:
+        raise Exception(f"Error al iniciar EventSub: {str(e)}")

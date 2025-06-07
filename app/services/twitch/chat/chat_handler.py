@@ -13,6 +13,8 @@ chat = None
 twitch = None
 bots = ["streamlabs", "streamelements", "nightbot", BOT_CHANNEL]
 chat_use_case = ChatUseCase(WebsocketAdapter())
+chunk_message = []
+chunk_size = 2
 
 
 async def setup_chat(twitch_instance):
@@ -44,10 +46,11 @@ async def on_message(msg: ChatMessage):
                 )
                 msg.text = "Mensaje no permitido"
                 return
-
         message_str = f"{msg.user.name}: {msg.text}"
-        response = response_sandy(message_str)
-        await chat_use_case.handle_message(msg.user.name, msg.text, response)
+        chunk_message.append(message_str)
+        if len(chunk_message) >= chunk_size:
+            response = response_sandy(message_str)
+            await chat_use_case.handle_message(msg.user.name, msg.text, response)
 
 
 async def close_chat():

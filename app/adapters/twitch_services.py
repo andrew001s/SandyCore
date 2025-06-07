@@ -2,13 +2,9 @@ import twitchAPI.type as type
 
 from app.domain.exceptions import EventSubError
 from app.models.ProfileModel import ProfileModel
-from app.services.twitch.twitch import (
-    auth,
-    close_chat,
-    close_eventsub,
-    setup_chat,
-    setup_eventsub,
-)
+from app.services.twitch.twitch import auth, close_chat, close_eventsub
+from app.services.twitch.twitch import setup_chat_instance as setup_chat
+from app.services.twitch.twitch import setup_eventsub_instance as setup_eventsub
 
 
 class TwitchService:

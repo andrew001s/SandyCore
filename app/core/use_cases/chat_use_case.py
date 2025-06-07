@@ -6,14 +6,12 @@ from app.core.ports.websocket_port import WebsocketPort
 class ChatUseCase:
     def __init__(self, websocket_port: WebsocketPort):
         self.websocket_port = websocket_port
-        self.chunk_size = 3
         self.chunk_message = []
 
     async def handle_message(self, username: str, message: str, response: str) -> None:
         self.chunk_message.append(f"{username}: {message}")
-        if len(self.chunk_message) >= self.chunk_size:
-            await self.process_chunk(response)
-            self.chunk_message.clear()
+        await self.process_chunk(response)
+        self.chunk_message.clear()
 
     async def process_chunk(self, response: str) -> None:
         await self.websocket_port.broadcast_message(
