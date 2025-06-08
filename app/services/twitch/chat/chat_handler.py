@@ -14,7 +14,7 @@ twitch = None
 bots = ["streamlabs", "streamelements", "nightbot", BOT_CHANNEL]
 chat_use_case = ChatUseCase(WebsocketAdapter())
 chunk_message = []
-chunk_size = 2
+chunk_size = 3
 
 
 async def setup_chat(twitch_instance):
@@ -51,6 +51,7 @@ async def on_message(msg: ChatMessage):
         if len(chunk_message) >= chunk_size:
             response = response_sandy(message_str)
             await chat_use_case.handle_message(msg.user.name, msg.text, response)
+            chunk_message.clear()
 
 
 async def close_chat():
