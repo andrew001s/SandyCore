@@ -9,7 +9,8 @@ class StartServicesCase:
     async def execute(self, bot: bool = False):
         twitch, twitch_bot, user_id = await self.twitch_service.return_instance(bot)
         if bot:
-            await self.twitch_service.setup_chat(twitch_bot)
+            # Pasar ambas instancias cuando se usa el bot
+            await self.twitch_service.setup_chat(twitch_bot, twitch_bot=twitch)
         else:
             await self.twitch_service.setup_chat(twitch)
 

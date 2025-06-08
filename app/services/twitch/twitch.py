@@ -28,8 +28,8 @@ async def close_chat_instance():
     await close_chat()
 
 
-async def setup_chat_instance(twitch_obj):
-    await setup_chat(twitch_obj)
+async def setup_chat_instance(twitch_obj, twitch_bot=None):
+    await setup_chat(twitch_obj, twitch_bot)
 
 
 async def setup_eventsub_instance(twitch, user_id):

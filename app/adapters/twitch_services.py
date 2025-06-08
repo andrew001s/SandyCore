@@ -36,8 +36,8 @@ class TwitchService:
     async def return_instance(self, bot: bool = False):
         return await auth.return_twitch_instance(bot)
 
-    async def setup_chat(self, twitch_obj):
-        await setup_chat(twitch_obj)
+    async def setup_chat(self, twitch_obj, twitch_bot=None):
+        await setup_chat(twitch_obj, twitch_bot)
 
     async def close_chat(self):
         await close_chat()

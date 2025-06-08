@@ -11,16 +11,22 @@ TARGET_CHANNEL = config.CHANNEL
 BOT_CHANNEL = config.TWITCH_BOT_ACCOUNT
 chat = None
 twitch = None
+twitch_bot_instance = None
 bots = ["streamlabs", "streamelements", "nightbot", BOT_CHANNEL]
 chat_use_case = ChatUseCase(WebsocketAdapter())
 chunk_message = []
 chunk_size = 3
 
 
-async def setup_chat(twitch_instance):
+async def setup_chat(twitch_instance, twitch_bot=None):
     global chat
     global twitch
+    global twitch_bot_instance
+
     twitch = twitch_instance
+    twitch_bot_instance = twitch_bot if twitch_bot else twitch_instance
+
+    # Utilizar la instancia principal para la conexión del chat
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
@@ -34,12 +40,17 @@ async def on_ready(ready_event: EventData):
 
 
 async def on_message(msg: ChatMessage):
+    global twitch
+    global twitch_bot_instance
     print(f"{msg.user.name}: {msg.text}")
     if msg.user.name not in bots:
         if check_banned_words(msg.text) and msg.user.mod is False:
             response = check_message(msg.text)
             if response == "NO PERMITIDOS\n":
-                await twitch.delete_chat_message(auth.user.id, auth.user.id, msg.id)
+                twitch_instance = twitch_bot_instance if twitch_bot_instance else twitch
+                await twitch_instance.delete_chat_message(
+                    auth.user.id, auth.user.id, msg.id
+                )
                 await chat.send_message(
                     msg.room.name,
                     f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
