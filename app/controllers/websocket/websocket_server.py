@@ -46,7 +46,7 @@ async def handle_websocket(websocket: WebSocket):
         welcome_message = ConnectionMessage(
             type="connection_established",
             client_id=client_id,
-            message="Conectado al servidor WebSocket",
+            message="✅ Conectado al servidor WebSocket",
         )
         await manager.send_personal_message(welcome_message.dict(), websocket)
 
