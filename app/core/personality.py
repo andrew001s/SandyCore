@@ -1,7 +1,7 @@
 import os
 
 Base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-Personality_file = os.path.join(Base_dir, "data", "personality.txt")
+Personality_file = os.path.join(Base_dir, "domain", "personality.txt")
 
 
 def read_file():

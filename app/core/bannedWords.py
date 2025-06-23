@@ -2,7 +2,7 @@ import json
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BANNED_WORDS_FILE = os.path.join(BASE_DIR, "data", "banned_words.json")
+BANNED_WORDS_FILE = os.path.join(BASE_DIR, "domain", "banned_words.json")
 
 
 def load_banned_words():
