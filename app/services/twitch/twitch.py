@@ -1,50 +1,39 @@
 import app.services.twitch.auth.auth as auth
-import twitchAPI.type as type
-from app.services.twitch.chat.chat_handler import setup_chat, close_chat
-from app.services.twitch.events.eventsub_handler import setup_eventsub, close_eventsub
-from app.models.ProfileModel import ProfileModel
-
-
-async def run_bot(bot: bool = False):
-    twitch, twitch_bot, user_id = await auth.create_twitch_instance(bot)
-    if bot:
-        await setup_chat(twitch_bot)
-    else:
-        if twitch:
-            await close_chat()
-        await setup_chat(twitch)
-    try:
-        await setup_eventsub(twitch, user_id)
-    except type.EventSubSubscriptionError as e:
-        pass
-    except Exception as e:
-        print(f"Error al iniciar EventSub: {e}")
+from app.services.twitch.chat.chat_handler import close_chat, setup_chat
+from app.services.twitch.events.eventsub_handler import close_eventsub, setup_eventsub
 
 
 async def get_user_profile(bot=False) -> dict:
-    if not bot:
-        user = auth.user
-        profile = ProfileModel(
-            id=user.id,
-            username=user.display_name,
-            email=user.email,
-            picProfile=user.profile_image_url,
-        )
-        return profile.model_dump() 
-    else:
-        user = auth.user_bot
-        profile = ProfileModel(
-            id=user.id,
-            username=user.display_name,
-            email=user.email,
-            picProfile=user.profile_image_url,
-        )
-        return profile.model_dump()
+    try:
+        user = auth.user_bot if bot else auth.user
+        if user is None:
+            raise Exception("Usuario no autenticado")
+        return user
+    except Exception as e:
+        raise Exception(f"Error al obtener el perfil: {str(e)}")
+
 
 async def close_twitch():
     await auth.close_twitch()
     await close_chat_instance()
     await close_eventsub()
-    
+
+
+async def start_bot():
+    await close_chat_instance()
+    await close_eventsub()
+
+
 async def close_chat_instance():
     await close_chat()
+
+
+async def setup_chat_instance(twitch_obj, twitch_bot=None):
+    await setup_chat(twitch_obj, twitch_bot)
+
+
+async def setup_eventsub_instance(twitch, user_id):
+    try:
+        await setup_eventsub(twitch, user_id)
+    except Exception as e:
+        raise Exception(f"Error al iniciar EventSub: {str(e)}")

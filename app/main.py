@@ -1,56 +1,31 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-import asyncio
-import threading
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
-from app.services.twitch.twitch import run_bot, get_user_profile, close_twitch
-from app.services.speech2Text import transcribir_audio, pause, resume, get_status
-import app.shared.state as state
-from fastapi import Response
 
+from app.config.cors import configure_cors
+from app.controllers.http.gemini_router import router as gemini_router
+from app.controllers.http.test_router import router as test_router
+from app.controllers.http.twitch_router import router as twitch_router
+from app.controllers.websocket.websocket_server import handle_websocket
+from app.services.twitch.twitch import get_user_profile
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+configure_cors(app)
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Sandy IA corriendo🚀"}
+app.include_router(test_router)
+app.include_router(twitch_router)
+app.include_router(gemini_router)
 
 
-def run_bot_thread(bot: bool):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_bot(bot))
-
-
-def transcribir_audio_thread():
-    transcribir_audio()
-
-
-@app.get("/start")
-async def start_services(bot: bool = False):
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
     try:
-        if state.conected:
-            if bot: 
-                await close_twitch()  
-                threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
-            return Response(status_code=204)
-        state.conected = True
-        threading.Thread(target=run_bot_thread, args=(bot,), daemon=True).start()
-        if not hasattr(state, "audio_thread_started") or not state.audio_thread_started:
-            threading.Thread(target=transcribir_audio_thread, daemon=True).start()
-            state.audio_thread_started = True
-        return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
+        await handle_websocket(websocket)
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        print(f"WebSocket error: {e}")
+        if websocket.client_state != WebSocket.DISCONNECTED:
+            await websocket.close()
+
 
 @app.get("/get-profile")
 async def get_profile(bot: bool = False):
@@ -59,38 +34,3 @@ async def get_profile(bot: bool = False):
         return JSONResponse(status_code=200, content={"profile": profile})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.get("/stop")
-async def stop_services(bot: bool = False):
-    try:
-        state.conected = False
-        state.is_paused = False
-        await close_twitch()
-        if bot:
-            threading.Thread(target=run_bot_thread, args=(False,), daemon=True).start()
-        return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.post("/pause")
-def pause_microphone():
-    pause()
-    return JSONResponse(
-        status_code=200,
-        content={"status": "Micrófono pausado", "paused": state.is_paused},
-    )
-
-
-@app.post("/resume")
-def resume_microphone():
-    resume()
-    return JSONResponse(
-        status_code=200,
-        content={"status": "Micrófono reanudado", "paused": not state.is_paused},
-    )
-
-
-@app.get("/mic-status")
-def mic_status():
-    get_status()
-    return {"status": "activo" if state else "pausado", "paused": not state.is_paused}

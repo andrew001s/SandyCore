@@ -9,7 +9,7 @@
         "args": [
           "app.main:app",  // Ruta a tu archivo FastAPI (debe estar en el formato 'app.main:app')
           "--reload",
-          "--host", "127.0.0.1",
+          "--host", "0.0.0.0",
           "--port", "8000"
         ],
         "jinja": true
