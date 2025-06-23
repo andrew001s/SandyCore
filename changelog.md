@@ -1,3 +1,49 @@
+## v1.3.0 (2025-06-22)
+
+### Feat
+
+- ✨ Agregar plantillas para solicitudes de mejora y pull requests
+- **personality**: ✨  Actualizar la descripción de personalidad y agregar nuevas características y normas de respuesta para la VTuber Sandy
+- **auth**: ✨ simplificar la asignación de usuario_bot al obtener usuarios del bot
+- **eventsub**: ✨ optimizar la configuración de EventSub para evitar instancias duplicadas y mejorar la gestión de eventos
+- **auth**: ✨ agregar funcionalidad para refrescar el token de acceso y manejar excepciones de autenticación feat(chat): ✨ ajustar la inicialización del chat para almacenar la instancia de Twitch feat(start_services): ✨ mejorar la configuración de EventSub para instancias de bot y usuario
+- **tokens**: ✨ agregar funcionalidad para obtener y guardar tokens de autenticación de Twitch
+- **profile**: ✨ agregar funcionalidad para obtener el perfil de usuario de Twitch y manejar excepciones
+- **auth**: ✨ implementar autenticación de usuario de Twitch y agregar modelo de datos para la autenticación refactor(twitch_services): ♻️ actualizar la lógica de creación de instancias de Twitch para incluir tokens refactor(twitch_router): ♻️ agregar endpoint para autenticar usuarios de Twitch
+- **eventsub_handler**: ✨ agregar clase EventSubUseCase para manejar eventos de Twitch y enviar respuestas a través de WebSocket
+- ✨ agregar modelos de mensajes WebSocket para manejar diferentes tipos de comunicación
+- ✨ implementar adaptador WebSocket y caso de uso para manejar mensajes de chat
+- ✨ agregar soporte para WebSocket y manejar conexiones en el servidor
+- ✨ agregar enrutador de Gemini y servicios relacionados
+- ✨ eliminar función run_bot y limpiar importaciones en el módulo de Twitch
+- ✨ agregar enrutador de Twitch y servicios relacionados
+- ✨ configuración CORS y agregar enrutador de pruebas
+- ✨ actualizar la personalidad de Sandy con nuevos rasgos y detalles
+- ✨ agregar soporte para manejar el bot de Twitch en los servicios de inicio y cierre
+- ✨ evitar inicio múltiple del hilo de transcripción de audio
+- ✨ agregar manejo de cierre para servicios de Twitch
+- ✨ agregar endpoint para obtener el perfil de usuario
+- ✨  implementar manejo de estado para conexión y pausa del micrófono
+
+### Fix
+
+- 🗑️ Eliminar plantillas de credenciales y estado de audio no utilizado
+- **chat_handler**: :bug: Modificar la función setup_chat para aceptar una instancia de bot y actualizar su uso en el caso de servicios
+- :bug: Aumentar el tamaño del chunk de mensajes a 3 y limpiar el chunk después de procesar
+- :bug: Corrección setup chat y setup event sub
+- 🐛 corregir el cierre del chat en el caso de uso de servicios de Twitch
+- 🐛 mejorar el manejo de mensajes en el chat y agregar verificación de bots
+
+### Refactor
+
+- **domain**: ♻️ Reorganizar estructura de archivos y actualizar rutas de archivos de palabras prohibidas y personalidad
+- **websocket_server**: 💬 Agregar emoji a mensaje de conexión establecido en el servidor WebSocket
+- :recycle: eliminar archivos de servicios de transcripción y reproducción de audio
+- :recycle: Refactor codebase for improved readability and maintainability
+- ♻️ optimizar el manejo de servicios de Twitch en el enrutador y ajustar la lógica de inicio de servicios
+- ♻️ agregar funcionalidad para cerrar servicios de Twitch y manejar excepciones en el enrutador
+- ♻️ eliminar importación innecesaria de la biblioteca keyboard
+
 ## v1.2.0 (2025-04-21)
 
 ### Feat
