@@ -191,19 +191,43 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 
 ```
 app/
-├── adapters/          # Adaptadores para servicios externos
-├── config/            # Configuración de la aplicación
-├── controllers/       # Controladores HTTP y WebSocket
-├── core/              # Casos de uso y puertos
-│   ├── ports/         # Interfaces para adaptadores
-│   └── use_cases/     # Implementación de casos de uso
-├── data/              # Datos estáticos y configuraciones
-├── domain/            # Excepciones y mensajes del dominio
-├── models/            # Modelos de datos
-├── services/          # Servicios externos
-│   ├── application/   # Servicios de la aplicación
-│   └── twitch/        # Servicios relacionados con Twitch
-└── shared/            # Estado compartido y utilidades
+├── main.py                     # Punto de entrada de la aplicación
+├── adapters/                   # Adaptadores para servicios externos
+│   ├── gemini_services.py     # Servicios de Gemini AI
+│   ├── twitch_services.py     # Servicios de Twitch
+│   └── websocket_adapter.py   # Adaptador para WebSocket
+├── config/                     # Configuraciones
+│   └── cors.py                # Configuración CORS
+├── controllers/               # Controladores
+│   ├── http/                 # Controladores HTTP
+│   │   ├── gemini_router.py  # Rutas para Gemini
+│   │   ├── test_router.py    # Rutas de prueba
+│   │   └── twitch_router.py  # Rutas para Twitch
+│   └── websocket/            # Controladores WebSocket
+│       └── websocket_server.py
+├── core/                     # Núcleo de la aplicación
+│   ├── bannedWords.py       # Gestión de palabras prohibidas
+│   ├── config.py           # Configuraciones principales
+│   ├── personality.py      # Configuración de personalidad
+│   ├── ports/             # Puertos para la arquitectura hexagonal
+│   └── use_cases/         # Casos de uso
+├── domain/                # Dominio de la aplicación
+│   ├── banned_words.json # Lista de palabras prohibidas
+│   ├── exceptions.py     # Excepciones personalizadas
+│   ├── messages.py       # Mensajes del sistema
+│   ├── personality.json  # Configuración de personalidad
+│   ├── personality.txt   # Descripción de personalidad
+│   └── prompts.py        # Plantillas de prompts
+├── models/               # Modelos de datos
+│   ├── message_model.py  # Modelo de mensajes
+│   ├── ProfileModel.py   # Modelo de perfil
+│   ├── tokens_model.py   # Modelo de tokens
+│   └── websocket_models.py # Modelos para WebSocket
+└── services/             # Servicios de la aplicación
+    ├── gemini.py        # Servicio de Gemini AI
+    ├── moderator.py     # Servicio de moderación
+    └── twitch/          # Servicios de Twitch
+        └── twitch.py    # Implementación principal de Twitch
 ```
 
 ### Flujo de Datos
