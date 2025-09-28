@@ -70,6 +70,7 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
      TWITCH_SECRET=your_secret_here
      TWITCH_CLIENT_ID=your_client_id_here
      GEMINI_API_KEY=your_gemini_api_key_here
+     TWITCH_CHANNEL=your_twitch_channel_name
    ```
 
    Estas variables son necesarias para la autenticación con Twitch y servicios de IA. Asegúrate de tener las credenciales correctas y los permisos necesarios antes de ejecutar el proyecto.
