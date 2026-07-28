@@ -1,7 +1,5 @@
 from collections import deque
 
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
 
 from app.core.config import config
@@ -26,13 +24,26 @@ class Order(BaseModel):
     order_objective: str
 
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
 history_chat: deque[str] = deque(maxlen=10)
+
+
+def _get_gemini_client():
+    try:
+        from google import genai
+    except ImportError as e:
+        raise ImportError(
+            "La dependencia de Gemini no está instalada. "
+            "Revisa requirements.txt y el proceso de build."
+        ) from e
+
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 
 def client_gemini(message: str, prompt: str) -> str:
     try:
+        from google.genai import types
+
+        client = _get_gemini_client()
         context = generate_context()
         full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
 
@@ -49,6 +60,7 @@ def client_gemini(message: str, prompt: str) -> str:
 
 def client_gemini_order(message: str, prompt: str) -> Order:
     try:
+        client = _get_gemini_client()
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt + message,

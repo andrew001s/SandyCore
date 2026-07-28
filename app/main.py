@@ -6,7 +6,6 @@ from app.controllers.http.gemini_router import router as gemini_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
 from app.controllers.websocket.websocket_server import handle_websocket
-from app.services.twitch.twitch import get_user_profile
 
 app = FastAPI()
 configure_cors(app)
@@ -30,6 +29,8 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/get-profile")
 async def get_profile(bot: bool = False):
     try:
+        from app.services.twitch.twitch import get_user_profile
+
         profile = await get_user_profile(bot)
         return JSONResponse(status_code=200, content={"profile": profile})
     except Exception as e:
