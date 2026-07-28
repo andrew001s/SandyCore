@@ -15,7 +15,7 @@ twitch_bot_instance = None
 bots = ["streamlabs", "streamelements", "nightbot", BOT_CHANNEL]
 chat_use_case = ChatUseCase(WebsocketAdapter())
 chunk_message = []
-chunk_size = 3
+chunk_size = 1
 
 
 async def setup_chat(twitch_instance, twitch_bot=None):
@@ -26,7 +26,6 @@ async def setup_chat(twitch_instance, twitch_bot=None):
     twitch = twitch_instance
     twitch_bot_instance = twitch_bot if twitch_bot else twitch_instance
 
-    # Utilizar la instancia principal para la conexión del chat
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
@@ -45,8 +44,8 @@ async def on_message(msg: ChatMessage):
     print(f"{msg.user.name}: {msg.text}")
     if msg.user.name not in bots:
         if check_banned_words(msg.text) and msg.user.mod is False:
-            response = check_message(msg.text)
-            if response == "NO PERMITIDOS\n":
+            moderation = await check_message(msg.text)
+            if moderation == "NO PERMITIDOS\n":
                 twitch_instance = twitch_bot_instance if twitch_bot_instance else twitch
                 await twitch_instance.delete_chat_message(
                     auth.user.id, auth.user.id, msg.id
@@ -60,7 +59,7 @@ async def on_message(msg: ChatMessage):
         message_str = f"{msg.user.name}: {msg.text}"
         chunk_message.append(message_str)
         if len(chunk_message) >= chunk_size:
-            response = response_sandy(message_str)
+            response = await response_sandy(message_str)
             await chat_use_case.handle_message(msg.user.name, msg.text, response)
             chunk_message.clear()
 

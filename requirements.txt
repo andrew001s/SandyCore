@@ -22,3 +22,4 @@ tinycss2==1.4.0
 twitchapi==4.4.0
 twitchio==2.10.0
 uvicorn==0.34.0
+openai>=1.0.0

@@ -3,6 +3,7 @@ from collections import deque
 from pydantic import BaseModel
 
 from app.core.config import config
+from app.core.ports.ai_port import AIPort
 from app.domain.prompts import (
     PROMPT_ASSIST,
     PROMPT_GET_STATISTICS,
@@ -14,65 +15,46 @@ from app.domain.prompts import (
 )
 
 PERSONALITY = config.PERSONALITY
-GEMINI_API_KEY = config.GEMINI_API_KEY
 BOT_NAME = config.TWITCH_BOT_ACCOUNT
 
 
 class Order(BaseModel):
     type: str
-    order_name: str
-    order_objective: str
+    order_name: str | None = None
+    order_objective: str | None = None
 
 
 history_chat: deque[str] = deque(maxlen=10)
+_ai_client: AIPort | None = None
 
 
-def _get_gemini_client():
-    try:
-        from google import genai
-    except ImportError as e:
-        raise ImportError(
-            "La dependencia de Gemini no está instalada. "
-            "Revisa requirements.txt y el proceso de build."
-        ) from e
+def _get_ai_client() -> AIPort:
+    global _ai_client
+    if _ai_client is not None:
+        return _ai_client
+    provider = config.AI_PROVIDER
+    if provider == "openrouter":
+        from app.adapters.openrouter_adapter import OpenRouterAdapter
 
-    return genai.Client(api_key=GEMINI_API_KEY)
+        _ai_client = OpenRouterAdapter()
+    else:
+        from app.adapters.gemini_adapter import GeminiAdapter
 
-
-def client_gemini(message: str, prompt: str) -> str:
-    try:
-        from google.genai import types
-
-        client = _get_gemini_client()
-        context = generate_context()
-        full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
-
-        chat = client.chats.create(
-            model="gemini-2.0-flash",
-            config=types.GenerateContentConfig(system_instruction=full_prompt),
-        )
-
-        bot_response = chat.send_message(message)
-        return bot_response.text
-    except Exception as e:
-        print(f"Error en client_gemini: {e}")
+        _ai_client = GeminiAdapter()
+    return _ai_client
 
 
-def client_gemini_order(message: str, prompt: str) -> Order:
-    try:
-        client = _get_gemini_client()
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt + message,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": Order,
-            },
-        )
-        order: Order = response.parsed
-        return order
-    except Exception as e:
-        print(f"Error en client_gemini_order: {e}")
+async def client_gemini(message: str, prompt: str) -> str:
+    client = _get_ai_client()
+    context = generate_context()
+    full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
+    return await client.generate_text(message, full_prompt)
+
+
+async def client_gemini_order(message: str, prompt: str) -> Order:
+    client = _get_ai_client()
+    result = await client.generate_structured(prompt + message, Order)
+    return result
 
 
 def add_to_history(message: str):
@@ -83,15 +65,15 @@ def generate_context() -> str:
     return "\n".join(history_chat)
 
 
-def response_sandy(message: str) -> str:
+async def response_sandy(message: str) -> str:
     add_to_history("user:" + message)
-    response = client_gemini(message, PROMPT_VTUBER + PERSONALITY)
+    response = await client_gemini(message, PROMPT_VTUBER + PERSONALITY)
     add_to_history(response)
     return response
 
 
 async def response_sandy_shandrew(message: str) -> str:
-    response_assist = client_gemini_order(message, prompt=PROMPT_ASSIST)
+    response_assist = await client_gemini_order(message, prompt=PROMPT_ASSIST)
     print("response_assist", response_assist)
     from app.services.twitch.events.moderation_handler import (
         get_stream_info,
@@ -102,31 +84,31 @@ async def response_sandy_shandrew(message: str) -> str:
         await moderator_actions(
             title=response_assist.order_objective, name=response_assist.order_name
         )
-        return client_gemini(message, PROMPT_VTUBER + PERSONALITY)
+        return await client_gemini(message, PROMPT_VTUBER + PERSONALITY)
     elif response_assist.type == "statistics":
         stadistics = await get_stream_info()
-        return client_gemini(str(stadistics), PROMPT_GET_STATISTICS)
+        return await client_gemini(str(stadistics), PROMPT_GET_STATISTICS)
     elif response_assist.type == "interacción":
         add_to_history("shandrew:" + message)
-        response = client_gemini(message, PROMPT_VTUBER_SHANDREW + PERSONALITY)
+        response = await client_gemini(message, PROMPT_VTUBER_SHANDREW + PERSONALITY)
         add_to_history("bot:" + response)
         return response
 
 
-def check_message(message: str) -> str:
-    response = client_gemini(message, PROMPT_MOD)
+async def check_message(message: str) -> str:
+    response = await client_gemini(message, PROMPT_MOD)
     return response
 
 
-def response_gemini_rewards(message: str) -> str:
-    response = client_gemini(
+async def response_gemini_rewards(message: str) -> str:
+    response = await client_gemini(
         message, PROMPT_VTUBER + PERSONALITY + PROMPT_VTUBER_REWARDS
     )
     return response
 
 
-def response_gemini_events(message: str) -> str:
-    response = client_gemini(
+async def response_gemini_events(message: str) -> str:
+    response = await client_gemini(
         message, PROMPT_VTUBER + PERSONALITY + PROMPT_VTUBER_EVENTS
     )
     return response
