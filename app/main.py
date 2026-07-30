@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
 from app.controllers.http.gemini_router import router as gemini_router
+from app.controllers.http.realtime_router import router as realtime_router
 from app.controllers.http.settings_router import router as settings_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
@@ -32,6 +33,7 @@ app.include_router(test_router)
 app.include_router(twitch_router)
 app.include_router(settings_router)
 app.include_router(gemini_router)
+app.include_router(realtime_router)
 
 
 @app.websocket("/ws")
