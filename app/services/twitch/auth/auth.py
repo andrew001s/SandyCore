@@ -4,6 +4,7 @@ from twitchAPI.helper import first
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, UnauthorizedException
 
+from app.core.config import config
 from app.core.runtime import get_active_user_id, set_active_user_id
 from app.services.client_settings import load_effective_settings
 from app.services.storage.sqlite_store import get_twitch_tokens, save_twitch_tokens
@@ -45,9 +46,8 @@ def _resolve_user_id(user_id: str | None = None) -> str:
 
 
 async def refresh_access_token(user_id: str, refresh_token: str):
-    settings = await load_effective_settings(user_id)
-    client_id = settings.get("twitch_client_id")
-    client_secret = settings.get("twitch_client_secret")
+    client_id = config.TWITCH_CLIENT_ID
+    client_secret = config.TWITCH_SECRET
     if not client_id or not client_secret:
         raise Exception(
             "Faltan twitch_client_id o twitch_client_secret en la configuración del usuario"
@@ -128,9 +128,8 @@ async def authenticate_twitch(
     user_id: str | None = None, token: str = None, refresh_token: str = None
 ):
     owner_id = _resolve_user_id(user_id)
-    settings = await load_effective_settings(owner_id)
-    client_id = settings.get("twitch_client_id")
-    client_secret = settings.get("twitch_client_secret")
+    client_id = config.TWITCH_CLIENT_ID
+    client_secret = config.TWITCH_SECRET
     if not client_id or not client_secret:
         raise Exception(
             "Faltan twitch_client_id o twitch_client_secret en la configuración del usuario"

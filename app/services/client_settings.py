@@ -1,7 +1,6 @@
 import os
 from typing import Any
 
-from app.core.config import config
 from app.core.runtime import get_active_user_id
 from app.services.storage.sqlite_store import get_user_settings, upsert_user_settings
 
@@ -40,9 +39,6 @@ def _defaults() -> dict[str, Any]:
         "language": os.getenv("LANGUAGE", "es-ES"),
         "fish_audio_key": os.getenv("FISH_AUDIO_KEY"),
         "voice_id": os.getenv("VOICE_ID"),
-        "twitch_client_id": config.TWITCH_CLIENT_ID,
-        "twitch_client_secret": config.TWITCH_SECRET,
-        "redirect_uri": config.TWITCH_REDIRECT_URI,
     }
 
 

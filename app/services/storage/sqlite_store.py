@@ -5,6 +5,14 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+LEGACY_USER_SETTINGS_KEYS = {
+    "twitch_client_id",
+    "twitch_client_secret",
+    "redirect_uri",
+}
+
+_legacy_user_settings_cleaned = False
+
 
 def _db_path() -> Path:
     configured = os.getenv("SQLITE_PATH")
@@ -22,6 +30,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def initialize_db_sync() -> None:
+    global _legacy_user_settings_cleaned
     with _connect() as conn:
         conn.executescript(
             """
@@ -43,6 +52,27 @@ def initialize_db_sync() -> None:
             );
             """
         )
+        if not _legacy_user_settings_cleaned:
+            rows = conn.execute(
+                "SELECT user_id, settings_json FROM user_settings"
+            ).fetchall()
+            for row in rows:
+                settings = json.loads(row["settings_json"])
+                cleaned = {
+                    key: value
+                    for key, value in settings.items()
+                    if key not in LEGACY_USER_SETTINGS_KEYS
+                }
+                if cleaned != settings:
+                    conn.execute(
+                        """
+                        UPDATE user_settings
+                        SET settings_json = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = ?
+                        """,
+                        (json.dumps(cleaned), row["user_id"]),
+                    )
+            _legacy_user_settings_cleaned = True
         conn.commit()
 
 
@@ -135,4 +165,3 @@ def get_twitch_tokens_sync(user_id: str, bot: bool = False) -> dict[str, str] | 
 
 async def get_twitch_tokens(user_id: str, bot: bool = False) -> dict[str, str] | None:
     return await asyncio.to_thread(get_twitch_tokens_sync, user_id, bot)
-
