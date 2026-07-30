@@ -13,6 +13,13 @@ SETTINGS_KEYS = {
     "ai_provider",
     "openrouter_api_key",
     "openrouter_model",
+    "stt_provider",
+    "tts_provider",
+    "azure_speech_key",
+    "azure_region",
+    "language",
+    "fish_audio_key",
+    "voice_id",
 }
 
 
@@ -26,6 +33,13 @@ def _defaults() -> dict[str, Any]:
         "openrouter_model": os.getenv(
             "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
         ),
+        "stt_provider": os.getenv("STT_PROVIDER", "azure"),
+        "tts_provider": os.getenv("TTS_PROVIDER", "fish_audio"),
+        "azure_speech_key": os.getenv("AZURE_SPEECH_KEY"),
+        "azure_region": os.getenv("AZURE_REGION"),
+        "language": os.getenv("LANGUAGE", "es-ES"),
+        "fish_audio_key": os.getenv("FISH_AUDIO_KEY"),
+        "voice_id": os.getenv("VOICE_ID"),
         "twitch_client_id": config.TWITCH_CLIENT_ID,
         "twitch_client_secret": config.TWITCH_SECRET,
         "redirect_uri": config.TWITCH_REDIRECT_URI,
@@ -56,6 +70,8 @@ async def save_effective_settings(
     if not owner_id:
         raise ValueError("No hay un usuario activo para guardar la configuración")
     current = await load_effective_settings(owner_id)
-    current.update({key: value for key, value in settings.items() if key in SETTINGS_KEYS})
+    current.update(
+        {key: value for key, value in settings.items() if key in SETTINGS_KEYS}
+    )
     await upsert_user_settings(owner_id, current)
     return current

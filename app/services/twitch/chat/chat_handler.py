@@ -79,8 +79,13 @@ async def on_message(msg: ChatMessage):
         message_str = f"{msg.user.name}: {msg.text}"
         chunk_message.append(message_str)
         if len(chunk_message) >= chunk_size:
-            response = await response_sandy(message_str, ACTIVE_USER_ID)
-            await chat_use_case.handle_message(msg.user.name, msg.text, response)
+            try:
+                response = await response_sandy(message_str, ACTIVE_USER_ID)
+                await chat_use_case.handle_message(msg.user.name, msg.text, response)
+            except Exception as exc:
+                print(f"[CHAT ERROR] No se pudo generar respuesta: {repr(exc)}")
+                response = "No pude responder en este momento."
+                await chat_use_case.handle_message(msg.user.name, msg.text, response)
             chunk_message.clear()
 
 

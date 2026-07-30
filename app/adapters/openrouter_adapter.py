@@ -1,9 +1,8 @@
 import json
-import time
 import re
+import time
 
 from pydantic import BaseModel
-from openai import BadRequestError
 
 from app.core.ports.ai_port import AIPort
 
@@ -32,21 +31,38 @@ class OpenRouterAdapter(AIPort):
         )
         self.model = model
 
+    @staticmethod
+    def _extract_content(response) -> str | None:
+        choices = getattr(response, "choices", None)
+        if not choices:
+            return None
+        first_choice = choices[0]
+        message = getattr(first_choice, "message", None)
+        if message is None:
+            return None
+        return getattr(message, "content", None)
+
     async def generate_text(self, message: str, system_instruction: str) -> str:
         start = time.perf_counter()
         print(f"[OPENROUTER] Enviando prompt a {self.model}...")
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": message},
-            ],
-        )
-        result = response.choices[0].message.content
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": message},
+                ],
+            )
+            result = self._extract_content(response)
+        except Exception as exc:
+            raise Exception(f"OpenRouter falló al generar texto: {repr(exc)}") from exc
+
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta en {elapsed:.2f}s")
         if result is None:
-            print(f"[OPENROUTER] ADVERTENCIA: modelo devolvió contenido nulo, reintentando sin system role...")
+            print(
+                "[OPENROUTER] ADVERTENCIA: respuesta vacía, reintentando sin system role..."
+            )
             start2 = time.perf_counter()
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -54,7 +70,7 @@ class OpenRouterAdapter(AIPort):
                     {"role": "user", "content": f"{system_instruction}\n\n{message}"},
                 ],
             )
-            result = response.choices[0].message.content or "¿Mande?"
+            result = self._extract_content(response) or "¿Mande?"
             elapsed2 = time.perf_counter() - start2
             print(f"[OPENROUTER] Reintento exitoso en {elapsed2:.2f}s")
         print(f"[OPENROUTER] Respuesta ({len(result)} chars): {result[:200]}")
@@ -65,12 +81,16 @@ class OpenRouterAdapter(AIPort):
     ) -> BaseModel:
         start = time.perf_counter()
         print(f"[OPENROUTER] Enviando prompt estructurado a {self.model}...")
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": content}],
-            response_format={"type": "json_object"},
-        )
-        raw = response.choices[0].message.content
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": content}],
+                response_format={"type": "json_object"},
+            )
+            raw = self._extract_content(response)
+        except Exception as exc:
+            raise Exception(f"OpenRouter falló al generar estructura: {repr(exc)}") from exc
+
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta estructurada en {elapsed:.2f}s")
         if raw is None:

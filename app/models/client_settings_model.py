@@ -10,3 +10,10 @@ class ClientSettingsModel(BaseModel):
     ai_provider: Optional[str] = None
     openrouter_api_key: Optional[str] = None
     openrouter_model: Optional[str] = None
+    stt_provider: Optional[str] = None
+    tts_provider: Optional[str] = None
+    azure_speech_key: Optional[str] = None
+    azure_region: Optional[str] = None
+    language: Optional[str] = None
+    fish_audio_key: Optional[str] = None
+    voice_id: Optional[str] = None
