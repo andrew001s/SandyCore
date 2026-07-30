@@ -11,6 +11,7 @@ load_dotenv(override=True)
 class Config:
     BANNED_WORDS = load_banned_words()
     PERSONALITY = read_file()
+    CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
     TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
     TWITCH_SECRET = os.getenv("TWITCH_SECRET")
     TWITCH_REDIRECT_URI = os.getenv("TWITCH_REDIRECT_URI")

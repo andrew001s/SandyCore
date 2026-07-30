@@ -9,9 +9,10 @@ from typing import Any
 import httpx
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.config import config
 from app.core.runtime import set_active_user_id
 
 
@@ -32,13 +33,13 @@ def _b64url_decode_int(data: str) -> int:
 
 
 def _load_token_from_request(request: Request) -> str | None:
-    authorization = request.headers.get("Authorization", "")
-    if authorization.lower().startswith("bearer "):
-        return authorization.split(" ", 1)[1].strip()
     cookie_token = request.cookies.get("__session")
     if cookie_token:
         return cookie_token
     return None
+
+
+_clerk_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @lru_cache(maxsize=1)
@@ -65,14 +66,57 @@ def _jwk_to_public_key(jwk: dict[str, Any]) -> rsa.RSAPublicKey:
     return public_numbers.public_key()
 
 
-async def verify_clerk_session(request: Request) -> ClerkUser:
-    token = _load_token_from_request(request)
-    if not token:
+async def _verify_clerk_api_key(api_key: str) -> ClerkUser:
+    if not config.CLERK_SECRET_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Falta el token de sesión de Clerk",
+            detail="Falta CLERK_SECRET_KEY para verificar API keys de Clerk",
         )
 
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "https://api.clerk.com/v1/api_keys/verify",
+                headers={
+                    "Authorization": f"Bearer {config.CLERK_SECRET_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"secret": api_key},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Clave API de Clerk inválida o expirada",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"No se pudo verificar la API key de Clerk: {exc}",
+        ) from exc
+
+    subject = payload.get("subject")
+    if not subject:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La API key de Clerk no tiene sujeto asociado",
+        )
+
+    clerk_user = ClerkUser(
+        user_id=str(subject),
+        session_id=None,
+        claims=payload,
+    )
+    set_active_user_id(clerk_user.user_id)
+    return clerk_user
+
+
+def _looks_like_session_jwt(token: str) -> bool:
+    return token.count(".") == 2
+
+
+async def _verify_clerk_session_token(token: str) -> ClerkUser:
     parts = token.split(".")
     if len(parts) != 3:
         raise HTTPException(
@@ -158,5 +202,22 @@ async def verify_clerk_session(request: Request) -> ClerkUser:
         ) from exc
 
 
-RequireClerkUser = Depends(verify_clerk_session)
+async def verify_clerk_session(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_clerk_bearer_scheme),
+) -> ClerkUser:
+    token = credentials.credentials if credentials else None
+    if not token:
+        token = _load_token_from_request(request)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Falta el token de sesión o la API key de Clerk",
+        )
 
+    if token.startswith("ak_") or not _looks_like_session_jwt(token):
+        return await _verify_clerk_api_key(token)
+    return await _verify_clerk_session_token(token)
+
+
+RequireClerkUser = Depends(verify_clerk_session)
