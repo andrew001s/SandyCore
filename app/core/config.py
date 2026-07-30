@@ -9,19 +9,14 @@ load_dotenv(override=True)
 
 
 class Config:
-    CHANNEL = os.getenv("TWITCH_CHANNEL")
     BANNED_WORDS = load_banned_words()
     PERSONALITY = read_file()
-    ID = os.getenv("TWITCH_CLIENT_ID")
-    SECRET = os.getenv("TWITCH_SECRET")
-    REDIRECT = os.getenv("REDIRECT_URI")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    TWITCH_BOT_ACCOUNT = os.getenv("TWITCH_BOT_ACCOUNT")
-    AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
-    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-    OPENROUTER_MODEL = os.getenv(
-        "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
-    )
+    TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
+    TWITCH_SECRET = os.getenv("TWITCH_SECRET")
+    TWITCH_REDIRECT_URI = os.getenv("TWITCH_REDIRECT_URI")
+    SQLITE_PATH = os.getenv("SQLITE_PATH")
+    CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "https://api.clerk.com/v1/jwks")
+    CLERK_AUDIENCE = os.getenv("CLERK_AUDIENCE")
 
 
 config = Config()

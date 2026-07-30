@@ -3,16 +3,33 @@ from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
 from app.controllers.http.gemini_router import router as gemini_router
+from app.controllers.http.settings_router import router as settings_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
 from app.controllers.websocket.websocket_server import handle_websocket
 
-app = FastAPI()
+tags_metadata = [
+    {"name": "Health", "description": "Verificación de estado de la API."},
+    {"name": "Twitch", "description": "Autenticación, tokens y control de servicios de Twitch."},
+    {"name": "Settings", "description": "Configuración por usuario guardada en SQLite."},
+    {"name": "AI", "description": "Consultas a la capa de IA."},
+]
+
+app = FastAPI(
+    title="Sandy Core IA API",
+    description="API para autenticación con Clerk, persistencia en SQLite y control de Twitch/IA.",
+    version="1.0.0",
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
 configure_cors(app)
 
 
 app.include_router(test_router)
 app.include_router(twitch_router)
+app.include_router(settings_router)
 app.include_router(gemini_router)
 
 

@@ -5,7 +5,6 @@ import re
 from pydantic import BaseModel
 from openai import BadRequestError
 
-from app.core.config import config
 from app.core.ports.ai_port import AIPort
 
 
@@ -24,14 +23,14 @@ def _extract_json(raw: str) -> str:
 
 
 class OpenRouterAdapter(AIPort):
-    def __init__(self):
+    def __init__(self, api_key: str, model: str):
         from openai import AsyncOpenAI
 
         self.client = AsyncOpenAI(
-            api_key=config.OPENROUTER_API_KEY,
+            api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
         )
-        self.model = config.OPENROUTER_MODEL
+        self.model = model
 
     async def generate_text(self, message: str, system_instruction: str) -> str:
         start = time.perf_counter()

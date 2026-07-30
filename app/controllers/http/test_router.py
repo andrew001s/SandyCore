@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.services.application.status_service import get_root_message
 
-router = APIRouter()
+router = APIRouter(tags=["Health"])
 
 
 @router.get("/")

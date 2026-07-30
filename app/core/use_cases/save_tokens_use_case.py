@@ -6,6 +6,10 @@ class SaveTokensUseCase:
         self.twitch_service = twitch_service
 
     async def execute(
-        self, bot: bool = False, token: str = None, refresh_token: str = None
+        self,
+        user_id: str,
+        bot: bool = False,
+        token: str = None,
+        refresh_token: str = None,
     ):
-        await self.twitch_service.save_tokens(bot, token, refresh_token)
+        await self.twitch_service.save_tokens(user_id, bot, token, refresh_token)

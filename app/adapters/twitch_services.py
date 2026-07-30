@@ -5,13 +5,14 @@ from app.models.ProfileModel import ProfileModel
 class TwitchService:
     async def create_instance(
         self,
+        user_id: str | None = None,
         token: str = None,
         refresh_token: str = None,
         bot: bool = False,
     ):
         from app.services.twitch.twitch import auth
 
-        return await auth.create_twitch_instance(bot, token, refresh_token)
+        return await auth.create_twitch_instance(user_id, bot, token, refresh_token)
 
     async def get_profile(self, bot: bool = False):
         from app.services.twitch.twitch import auth
@@ -37,10 +38,10 @@ class TwitchService:
 
         return await auth.return_twitch_instance(bot)
 
-    async def setup_chat(self, twitch_obj, twitch_bot=None):
+    async def setup_chat(self, twitch_obj, twitch_bot=None, user_id: str | None = None):
         from app.services.twitch.twitch import setup_chat_instance as setup_chat
 
-        await setup_chat(twitch_obj, twitch_bot)
+        await setup_chat(twitch_obj, twitch_bot, user_id)
 
     async def close_chat(self):
         from app.services.twitch.twitch import close_chat_instance as close_chat
@@ -68,17 +69,18 @@ class TwitchService:
 
         await close_eventsub()
 
-    async def get_tokens(self, bot: bool = False):
+    async def get_tokens(self, user_id: str | None = None, bot: bool = False):
         from app.services.twitch.twitch import auth
 
-        return await auth.get_tokens(bot)
+        return await auth.get_tokens(user_id, bot)
 
     async def save_tokens(
-        self, bot: bool = False, token: str = None, refresh_token: str = None
+        self,
+        user_id: str | None = None,
+        bot: bool = False,
+        token: str = None,
+        refresh_token: str = None,
     ):
         from app.services.twitch.twitch import auth
 
-        if not bot:
-            return await auth.save_tokens(token, refresh_token)
-        else:
-            return await auth.save_bot_tokens(token, refresh_token)
+        return await auth.save_tokens(user_id, token, refresh_token, bot)

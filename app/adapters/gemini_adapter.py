@@ -2,16 +2,15 @@ import time
 
 from pydantic import BaseModel
 
-from app.core.config import config
 from app.core.ports.ai_port import AIPort
 
 
 class GeminiAdapter(AIPort):
-    def __init__(self):
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
         from google import genai
 
-        self.client = genai.Client(api_key=config.GEMINI_API_KEY)
-        self.model = "gemini-2.0-flash"
+        self.client = genai.Client(api_key=api_key)
+        self.model = model
 
     async def generate_text(self, message: str, system_instruction: str) -> str:
         start = time.perf_counter()

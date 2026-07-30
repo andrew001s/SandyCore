@@ -1,12 +1,14 @@
 black==25.1.0
 chardet==5.2.0
 comtypes==1.4.10
+cryptography==45.0.6
 dotenv==0.9.9
 fastapi==0.115.11
 git-changelog==2.5.3
 google-genai==1.21.0
 google-generativeai==0.8.4
 grpcio-status==1.71.0
+httpx==0.28.1
 keyboard==0.13.5
 numpy==2.2.4
 pip-autoremove==0.10.0

@@ -5,9 +5,9 @@ class AuthUseCase:
     def __init__(self, twitch_service: TwitchService):
         self.twitch_service = twitch_service
 
-    async def execute(self, token, refresh_token, bot: bool = False):
+    async def execute(self, user_id, token, refresh_token, bot: bool = False):
         twitch, twitch_bot, user_id = await self.twitch_service.create_instance(
-            token, refresh_token, bot
+            user_id, token, refresh_token, bot
         )
         return twitch, twitch_bot, user_id
         """if bot:
