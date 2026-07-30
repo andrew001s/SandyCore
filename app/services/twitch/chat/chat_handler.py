@@ -43,6 +43,10 @@ async def setup_chat(twitch_instance, twitch_bot=None, user_id=None):
             "Primero guarda la configuración o vuelve a autenticar Twitch."
         )
 
+    if chat is not None:
+        chat.stop()
+        chat = None
+
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)

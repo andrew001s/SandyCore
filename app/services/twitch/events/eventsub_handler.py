@@ -43,35 +43,35 @@ async def chanel_points(msg: ChannelPointsCustomRewardRedemptionAddEvent):
     message = f"Redemption: {redemtion} from {user}"
     redemtion_obj = '{"user": "' + user + '", "reward": "' + redemtion + '"}'
     response = await response_gemini_rewards(redemtion_obj)
-    await eventsubUseCase.handle_events(message, response)
+    await eventsubUseCase.handle_events("reaction", message, response)
 
 
 async def on_follow(data: eventsub.ChannelFollowEvent):
     user = data.event.user_name
     message = f"Follow nombre_usuario: {user}"
     response = await response_gemini_events(f"{message}")
-    await eventsubUseCase.handle_events(message, response)
+    await eventsubUseCase.handle_events("reaction", message, response)
 
 
 async def on_subscribe(data: eventsub.ChannelSubscribeEvent):
     user = data.event.user_name
     sub = f"Subscribe user: {user}"
     response = await response_gemini_events(f"{sub}")
-    await eventsubUseCase.handle_events(sub, response)
+    await eventsubUseCase.handle_events("reaction", sub, response)
 
 
 async def on_subscribe_message(data: eventsub.ChannelSubscriptionMessageEvent):
     user = data.event.user_name
     sub = f"Suscribe user: {user} message: {data.event.message}"
     response = await response_gemini_events(f"{sub}")
-    await eventsubUseCase.handle_events(sub, response)
+    await eventsubUseCase.handle_events("speech", sub, response)
 
 
 async def on_sub_gift(data: eventsub.ChannelSubscriptionGiftEvent):
     user = data.event.user_name
     gift = f"gift_Sub user: {user}"
     response = await response_gemini_events(f"{gift}")
-    await eventsubUseCase.handle_events(gift, response)
+    await eventsubUseCase.handle_events("reaction", gift, response)
 
 
 async def on_cheer(data: eventsub.ChannelCheerEvent):
@@ -80,14 +80,14 @@ async def on_cheer(data: eventsub.ChannelCheerEvent):
     cheer_amount = data.event.bits
     cheer = f"cheer user: {user} bits_amount: {cheer_amount} message: {cheer}"
     response = await response_gemini_events(f"{cheer}")
-    await eventsubUseCase.handle_events(cheer, response)
+    await eventsubUseCase.handle_events("reaction", cheer, response)
 
 
 async def on_raid(data: eventsub.ChannelRaidEvent):
     user = data.event.from_broadcaster_user_name
     raid = f"Raid: user que raideo: {user}"
     response = await response_gemini_events(f"{raid}")
-    await eventsubUseCase.handle_events(raid, response)
+    await eventsubUseCase.handle_events("reaction", raid, response)
 
 
 async def close_eventsub():

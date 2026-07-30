@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket
+from starlette.websockets import WebSocketState
 from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
@@ -39,7 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await handle_websocket(websocket)
     except Exception as e:
         print(f"WebSocket error: {e}")
-        if websocket.client_state != WebSocket.DISCONNECTED:
+        if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close()
 
 

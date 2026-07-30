@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from app.core.ports.websocket_port import WebsocketPort
+from app.services.avatar_events import build_speech_event, build_system_event
 
 
 class ChatUseCase:
@@ -14,21 +13,28 @@ class ChatUseCase:
         self.chunk_message.clear()
 
     async def process_chunk(self, response: str) -> None:
+        source_message = self.chunk_message.copy()
         await self.websocket_port.broadcast_message(
-            {
-                "type": "twitch_response",
-                "messages": self.chunk_message.copy(),
-                "response": response,
-                "timestamp": datetime.now().isoformat(),
-            }
+            build_speech_event(
+                response,
+                priority=5,
+                interrupt=False,
+                scene="chat",
+                metadata={
+                    "source": "twitch_chat",
+                    "messages": source_message,
+                    "response": response,
+                },
+            )
         )
 
     async def notify_chat_connected(self, channel: str) -> None:
         await self.websocket_port.broadcast_message(
-            {
-                "type": "chat_connected",
-                "message": "Chat de Twitch conectado y listo",
-                "channel": channel,
-                "timestamp": datetime.now().isoformat(),
-            }
+            build_system_event(
+                "Chat de Twitch conectado y listo",
+                metadata={
+                    "source": "twitch_chat",
+                    "channel": channel,
+                },
+            )
         )
