@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 from app.core.runtime import get_active_user_id
-from app.services.storage.sqlite_store import get_user_settings, upsert_user_settings
+from app.services.storage.supabase_store import get_user_settings, upsert_user_settings
 
 
 SETTINGS_KEYS = {

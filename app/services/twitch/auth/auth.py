@@ -7,8 +7,8 @@ from twitchAPI.type import AuthScope, UnauthorizedException
 from app.core.config import config
 from app.core.runtime import get_active_user_id, set_active_user_id
 from app.services.client_settings import load_effective_settings
-from app.services.storage.sqlite_store import get_twitch_tokens, save_twitch_tokens
 from app.services.client_settings import save_effective_settings
+from app.services.storage.supabase_store import get_twitch_tokens, save_twitch_tokens
 
 USER_SCOPE = [
     AuthScope.CHAT_READ,

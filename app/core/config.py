@@ -13,10 +13,15 @@ class Config:
     PERSONALITY = read_file()
     CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
     STREAM_TOKEN_SECRET = os.getenv("STREAM_TOKEN_SECRET") or CLERK_SECRET_KEY
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY = (
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_SECRET_KEY")
+        or os.getenv("SUPABASE_KEY")
+    )
     TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
     TWITCH_SECRET = os.getenv("TWITCH_SECRET")
     TWITCH_REDIRECT_URI = os.getenv("TWITCH_REDIRECT_URI")
-    SQLITE_PATH = os.getenv("SQLITE_PATH")
     CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "https://api.clerk.com/v1/jwks")
     CLERK_AUDIENCE = os.getenv("CLERK_AUDIENCE")
     FRONTEND_ORIGINS = [
