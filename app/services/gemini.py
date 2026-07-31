@@ -42,10 +42,15 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
         return cached
 
     if provider == "openrouter":
+        openrouter_api_key = settings.get("openrouter_api_key")
+        if not openrouter_api_key:
+            raise Exception(
+                "Falta openrouter_api_key en la configuracion del usuario en Supabase"
+            )
         from app.adapters.openrouter_adapter import OpenRouterAdapter
 
         client = OpenRouterAdapter(
-            api_key=settings["openrouter_api_key"],
+            api_key=openrouter_api_key,
             model=settings["openrouter_model"],
         )
     else:

@@ -28,7 +28,6 @@ def _defaults() -> dict[str, Any]:
         "gemini_api_key": os.getenv("GEMINI_API_KEY"),
         "twitch_bot_account": os.getenv("TWITCH_BOT_ACCOUNT"),
         "ai_provider": os.getenv("AI_PROVIDER", "gemini"),
-        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
         "openrouter_model": os.getenv(
             "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
         ),
