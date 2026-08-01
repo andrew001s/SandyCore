@@ -13,6 +13,7 @@ from app.core.use_cases.stop_services_use_case import StopServicesUseCase
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.models.tokens_model import TokenModel
 from app.models.twitch_auth_model import TwitchAuth
+from app.services.twitch.lifecycle import get_service_status
 
 router = APIRouter(tags=["Twitch"])
 use_case_auth = AuthUseCase(TwitchService())
@@ -53,11 +54,7 @@ async def start_services(
     bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        if bot:
-            await use_case_stop.execute()
-            await use_case_start.execute(current_user.user_id, bot)
-        else:
-            await use_case_start.execute(current_user.user_id, bot)
+        await use_case_start.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -68,12 +65,19 @@ async def stop_services(
     bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        if bot:
-            await use_case_stop.execute()
-            await use_case_start.execute(current_user.user_id)
-        else:
-            await use_case_stop.execute()
+        await use_case_stop.execute(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.get("/service-status")
+async def service_status(
+    bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    try:
+        status = await get_service_status(current_user.user_id)
+        return JSONResponse(status_code=200, content={"service": status})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

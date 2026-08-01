@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.core.runtime import get_active_user_id
 from app.core.ports.ai_port import AIPort
 from app.services.client_settings import load_effective_settings
+from app.services.twitch.lifecycle import register_activity_and_monitor
 from app.domain.prompts import build_prompt_bundle
 
 
@@ -87,6 +88,7 @@ async def response_sandy(message: str, user_id: str | None = None) -> str:
     add_to_history("user:" + message)
     response = await client_gemini(message, prompts["vtuber"], user_id)
     add_to_history(response)
+    await register_activity_and_monitor(user_id)
     return response
 
 
@@ -107,14 +109,19 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
         await moderator_actions(
             title=response_assist.order_objective, name=response_assist.order_name
         )
-        return await client_gemini(message, prompts["vtuber"], user_id)
+        response = await client_gemini(message, prompts["vtuber"], user_id)
+        await register_activity_and_monitor(user_id)
+        return response
     elif response_type == "statistics":
         stadistics = await get_stream_info()
-        return await client_gemini(str(stadistics), prompts["statistics"], user_id)
+        response = await client_gemini(str(stadistics), prompts["statistics"], user_id)
+        await register_activity_and_monitor(user_id)
+        return response
     elif response_type == "interaccion":
         add_to_history("shandrew:" + message)
         response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
         add_to_history("bot:" + response)
+        await register_activity_and_monitor(user_id)
         return response
 
     print(
@@ -123,6 +130,7 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
     add_to_history("shandrew:" + message)
     response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
     add_to_history("bot:" + response)
+    await register_activity_and_monitor(user_id)
     return response
 
 
@@ -137,6 +145,7 @@ async def response_gemini_rewards(message: str, user_id: str | None = None) -> s
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
     response = await client_gemini(message, prompts["rewards"], user_id)
+    await register_activity_and_monitor(user_id)
     return response
 
 
@@ -144,4 +153,5 @@ async def response_gemini_events(message: str, user_id: str | None = None) -> st
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
     response = await client_gemini(message, prompts["events"], user_id)
+    await register_activity_and_monitor(user_id)
     return response

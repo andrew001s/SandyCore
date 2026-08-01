@@ -104,4 +104,6 @@ async def on_raid(data: eventsub.ChannelRaidEvent):
 
 async def close_eventsub():
     global eventsubInstance
-    await eventsubInstance.stop()
+    if eventsubInstance is not None:
+        await eventsubInstance.stop()
+        eventsubInstance = None
