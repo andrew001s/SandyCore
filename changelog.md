@@ -1,3 +1,18 @@
+## v1.3.1 (2026-08-01)
+
+### Feat
+
+- ✨ integrar OpenRouter como proveedor de IA intercambiable y optimizar latencia
+
+### Fix
+
+- evitar que la app falle al iniciar en Vercel por imports pesados
+- 🐛 Corregir la extensión del archivo de personalidad de .txt a .json
+
+### Refactor
+
+- **docs**: 📝 Actualizar la estructura del README y eliminar el archivo de personalidad
+
 ## v1.3.0 (2025-06-22)
 
 ### Feat
