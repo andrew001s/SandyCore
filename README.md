@@ -186,6 +186,25 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 
 ---
 
+## Flujo de Releases
+
+El proyecto usa GitHub Actions para automatizar releases y changelog:
+
+1. El trabajo diario se hace en ramas distintas a `main`.
+2. Cuando un cambio está listo para publicar, se hace `push` a `main`.
+3. El workflow [`release.yml`](.github/workflows/release.yml) detecta ese `push` y crea automáticamente un tag semántico nuevo:
+   - `patch` para correcciones
+   - `minor` para nuevas funcionalidades
+   - `major` para cambios rompientes
+4. El tag `v*` dispara el workflow [`changelog.yml`](.github/workflows/changelog.yml).
+5. Ese workflow genera o actualiza `CHANGELOG.md` y lo vuelve a subir a `main`.
+
+Notas:
+- El changelog solo se actualiza cuando existe un tag `v*`.
+- El flujo está pensado para que `main` represente versiones listas para publicar.
+
+---
+
 ## Arquitectura Técnica
 
 ### Estructura de Carpetas
