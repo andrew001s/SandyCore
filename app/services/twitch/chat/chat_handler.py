@@ -11,6 +11,7 @@ from app.services.moderator import check_banned_words
 TARGET_CHANNEL = None
 BOT_CHANNEL = None
 ACTIVE_USER_ID = None
+feature_flags = {}
 chat = None
 twitch = None
 twitch_bot_instance = None
@@ -28,14 +29,22 @@ async def setup_chat(twitch_instance, twitch_bot=None, user_id=None):
     global BOT_CHANNEL
     global ACTIVE_USER_ID
     global bots
+    global feature_flags
 
     twitch = twitch_instance
     twitch_bot_instance = twitch_bot if twitch_bot else twitch_instance
     ACTIVE_USER_ID = user_id or get_active_user_id()
     settings = await load_effective_settings(ACTIVE_USER_ID)
+    feature_flags = settings.get("feature_flags") or {}
     TARGET_CHANNEL = settings.get("twitch_channel")
     BOT_CHANNEL = settings["twitch_bot_account"]
     bots = ["streamlabs", "streamelements", "nightbot", BOT_CHANNEL]
+
+    if not feature_flags.get("chat_replies", True) and not feature_flags.get(
+        "moderation", True
+    ):
+        print("Chat desactivado por configuración del usuario")
+        return
 
     if not TARGET_CHANNEL:
         raise Exception(
@@ -65,11 +74,15 @@ async def on_message(msg: ChatMessage):
     global twitch
     global twitch_bot_instance
     global ACTIVE_USER_ID
+    global feature_flags
     print(f"{msg.user.name}: {msg.text}")
     if msg.user.name not in bots:
-        if check_banned_words(msg.text) and msg.user.mod is False:
+        settings = await load_effective_settings(ACTIVE_USER_ID)
+        feature_flags = settings.get("feature_flags") or {}
+        moderation_enabled = bool(feature_flags.get("moderation", True))
+        if moderation_enabled and await check_banned_words(msg.text, ACTIVE_USER_ID) and msg.user.mod is False:
             moderation = await check_message(msg.text, ACTIVE_USER_ID)
-            if moderation == "NO PERMITIDOS\n":
+            if moderation.strip().upper() == "NO PERMITIDO":
                 twitch_instance = twitch_bot_instance if twitch_bot_instance else twitch
                 await twitch_instance.delete_chat_message(
                     auth.user.id, auth.user.id, msg.id
@@ -80,16 +93,37 @@ async def on_message(msg: ChatMessage):
                 )
                 msg.text = "Mensaje no permitido"
                 return
+        if not feature_flags.get("chat_replies", True):
+            print("[TWITCH CHAT] chat_replies desactivado, se ignora el mensaje")
+            return
         message_str = f"{msg.user.name}: {msg.text}"
         chunk_message.append(message_str)
         if len(chunk_message) >= chunk_size:
             try:
                 response = await response_sandy(message_str, ACTIVE_USER_ID)
-                await chat_use_case.handle_message(msg.user.name, msg.text, response)
+                if not feature_flags.get("voice_replies", True):
+                    await chat.send_message(msg.room.name, response)
+                    chunk_message.clear()
+                    return
+                await chat_use_case.handle_message(
+                    msg.user.name,
+                    msg.text,
+                    response,
+                    voice_enabled=bool(feature_flags.get("voice_replies", True)),
+                )
             except Exception as exc:
                 print(f"[CHAT ERROR] No se pudo generar respuesta: {repr(exc)}")
                 response = "No pude responder en este momento."
-                await chat_use_case.handle_message(msg.user.name, msg.text, response)
+                if not feature_flags.get("voice_replies", True):
+                    await chat.send_message(msg.room.name, response)
+                    chunk_message.clear()
+                    return
+                await chat_use_case.handle_message(
+                    msg.user.name,
+                    msg.text,
+                    response,
+                    voice_enabled=bool(feature_flags.get("voice_replies", True)),
+                )
             chunk_message.clear()
 
 
@@ -98,3 +132,19 @@ async def close_chat():
     if chat:
         chat.stop()
         chat = None
+
+
+async def send_twitch_message(message: str, user_id: str | None = None) -> bool:
+    global chat
+    if chat is None:
+        print("[TWITCH CHAT] No hay chat activo para enviar el mensaje")
+        return False
+
+    settings = await load_effective_settings(user_id or ACTIVE_USER_ID)
+    target_channel = settings.get("twitch_channel") or TARGET_CHANNEL
+    if not target_channel:
+        print("[TWITCH CHAT] No hay canal objetivo configurado")
+        return False
+
+    await chat.send_message(target_channel, message)
+    return True

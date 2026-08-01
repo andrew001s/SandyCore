@@ -7,12 +7,19 @@ class ChatUseCase:
         self.websocket_port = websocket_port
         self.chunk_message = []
 
-    async def handle_message(self, username: str, message: str, response: str) -> None:
+    async def handle_message(
+        self,
+        username: str,
+        message: str,
+        response: str,
+        *,
+        voice_enabled: bool = True,
+    ) -> None:
         self.chunk_message.append(f"{username}: {message}")
-        await self.process_chunk(response)
+        await self.process_chunk(response, voice_enabled=voice_enabled)
         self.chunk_message.clear()
 
-    async def process_chunk(self, response: str) -> None:
+    async def process_chunk(self, response: str, *, voice_enabled: bool = True) -> None:
         source_message = self.chunk_message.copy()
         await self.websocket_port.broadcast_message(
             build_speech_event(
@@ -24,6 +31,7 @@ class ChatUseCase:
                     "source": "twitch_chat",
                     "messages": source_message,
                     "response": response,
+                    "voice_enabled": voice_enabled,
                 },
             )
         )

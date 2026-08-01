@@ -10,7 +10,14 @@ class EventSubUseCase:
     def __init__(self, websocket_port: WebsocketPort):
         self.websocket_port = websocket_port
 
-    async def handle_events(self, event_kind: str, message: str, response: str) -> None:
+    async def handle_events(
+        self,
+        event_kind: str,
+        message: str,
+        response: str,
+        *,
+        voice_enabled: bool = True,
+    ) -> None:
         if event_kind == "speech":
             payload_builder = build_speech_event
         elif event_kind == "action":
@@ -28,6 +35,7 @@ class EventSubUseCase:
                     "eventKind": event_kind,
                     "message": message,
                     "response": response,
+                    "voice_enabled": voice_enabled,
                 },
             )
         )

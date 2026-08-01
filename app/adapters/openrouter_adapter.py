@@ -2,7 +2,7 @@ import json
 import re
 import time
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.ports.ai_port import AIPort
 
@@ -126,4 +126,11 @@ class OpenRouterAdapter(AIPort):
             return response_model(type="interacción", order_name=None, order_objective=None)
         print(f"[OPENROUTER] Raw: {raw[:200]}")
         parsed = json.loads(_extract_json(raw))
-        return response_model(**parsed)
+        if not isinstance(parsed, dict):
+            parsed = {}
+        parsed.setdefault("type", "interacción")
+        try:
+            return response_model(**parsed)
+        except ValidationError:
+            parsed["type"] = parsed.get("type") or "interacción"
+            return response_model(**parsed)

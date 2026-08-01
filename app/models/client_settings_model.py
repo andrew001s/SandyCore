@@ -17,3 +17,9 @@ class ClientSettingsModel(BaseModel):
     language: Optional[str] = None
     fish_audio_key: Optional[str] = None
     voice_id: Optional[str] = None
+    persona_profile: Optional[dict] = None
+    prompt_overrides: Optional[dict] = None
+    feature_flags: Optional[dict] = None
+    custom_banned_words: Optional[list[str]] = None
+    custom_banned_symbols: Optional[list[str]] = None
+    custom_banned_links: Optional[list[str]] = None

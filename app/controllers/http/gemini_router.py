@@ -16,7 +16,7 @@ async def gemini_response_sandy_shandrew(
 ):
     use_case = GeminiServicesUseCase(GeminiServices())
     try:
-        response = await use_case.execute(message_payload.message)
+        response = await use_case.execute(message_payload.message, current_user.user_id)
         return JSONResponse(status_code=200, content={"message": response})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

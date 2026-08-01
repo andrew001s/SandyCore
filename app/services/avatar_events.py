@@ -170,10 +170,12 @@ def _base_event(
     scene: str | None = "main",
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    message_value = text
     return {
         "id": f"{event_type}_{uuid4().hex}",
         "type": event_type,
         "text": text,
+        "message": message_value,
         "emotion": emotion,
         "intensity": intensity,
         "durationMs": duration_ms,
