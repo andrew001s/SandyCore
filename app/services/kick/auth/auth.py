@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import secrets
 import traceback
 from dataclasses import dataclass
@@ -34,6 +35,19 @@ KICK_SCOPES = [
     "moderation:ban",
     "moderation:chat_message:manage",
     "kicks:read",
+]
+
+KICK_WEBHOOK_EVENTS = [
+    {"name": "chat.message.sent", "version": 1},
+    {"name": "channel.followed", "version": 1},
+    {"name": "channel.subscription.new", "version": 1},
+    {"name": "channel.subscription.renewal", "version": 1},
+    {"name": "channel.subscription.gifts", "version": 1},
+    {"name": "channel.reward.redemption.updated", "version": 1},
+    {"name": "kicks.gifted", "version": 1},
+    {"name": "livestream.status.updated", "version": 1},
+    {"name": "livestream.metadata.updated", "version": 1},
+    {"name": "moderation.banned", "version": 1},
 ]
 
 kick = None
@@ -419,7 +433,7 @@ async def subscribe_chat_message_events(
     client = await authenticate_kick(owner_id, None, None)
     payload = {
         "method": "webhook",
-        "events": [{"name": "chat.message.sent", "version": 1}],
+        "events": KICK_WEBHOOK_EVENTS,
     }
     response = await client.request_json(
         "POST",
@@ -429,7 +443,12 @@ async def subscribe_chat_message_events(
     )
     subscription_id = _extract_subscription_id(response)
     if subscription_id:
-        await save_kick_event_subscription(owner_id, subscription_id, "chat.message.sent", bot)
+        await save_kick_event_subscription(
+            owner_id,
+            subscription_id,
+            ",".join(event["name"] for event in KICK_WEBHOOK_EVENTS),
+            bot,
+        )
     return response
 
 

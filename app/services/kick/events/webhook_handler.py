@@ -8,12 +8,14 @@ from fastapi.responses import JSONResponse
 from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.config import config
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
+from app.services.avatar_events import build_system_event
 from app.services.client_settings import load_effective_settings, resolve_feature_flags
-from app.services.gemini import response_sandy
+from app.services.gemini import response_gemini_events, response_gemini_rewards, response_sandy
 from app.services.kick.auth import auth
 from app.services.moderator import check_banned_words
 
 event_use_case = EventSubUseCase(WebsocketAdapter())
+websocket_adapter = WebsocketAdapter()
 
 
 def _log_webhook(event: str, **fields) -> None:
@@ -74,6 +76,187 @@ def _extract_message_text(event_payload: dict) -> str:
             if isinstance(value, str) and value.strip():
                 return value.strip()
     return ""
+
+
+def _extract_first_string(event_payload: dict, keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = event_payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _extract_actor_name(event_payload: dict) -> str:
+    candidates = (
+        "sender",
+        "follower",
+        "subscriber",
+        "gifter",
+        "user",
+        "banned_user",
+        "moderator",
+        "broadcaster",
+    )
+    for key in candidates:
+        value = event_payload.get(key)
+        if isinstance(value, dict):
+            identity = value.get("identity")
+            if isinstance(identity, dict):
+                for identity_key in ("username", "name", "display_name", "login", "slug"):
+                    identity_value = identity.get(identity_key)
+                    if identity_value:
+                        return str(identity_value)
+            for field in ("username", "name", "display_name", "login", "slug"):
+                field_value = value.get(field)
+                if field_value:
+                    return str(field_value)
+        elif isinstance(value, str) and value.strip():
+            return value.strip()
+
+    for key in ("user_name", "username", "name", "display_name", "login", "slug"):
+        value = event_payload.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _extract_livestream_status(event_payload: dict) -> str:
+    for key in ("status", "state", "livestream_status", "stream_status"):
+        value = event_payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    is_live = event_payload.get("is_live")
+    if isinstance(is_live, bool):
+        return "live" if is_live else "offline"
+    return "updated"
+
+
+def _extract_gift_amount(event_payload: dict) -> str:
+    for key in ("amount", "kicks", "count", "quantity", "value"):
+        value = event_payload.get(key)
+        if value is not None and str(value).strip():
+            return str(value)
+    return ""
+
+
+def _extract_reward_title(event_payload: dict) -> str:
+    reward = event_payload.get("reward")
+    if isinstance(reward, dict):
+        for key in ("title", "name", "id"):
+            value = reward.get(key)
+            if value:
+                return str(value)
+    return _extract_first_string(event_payload, ("title", "name", "reward_name", "reward"))
+
+
+async def _broadcast_system_notification(user_id: str, message: str, metadata: dict) -> None:
+    await websocket_adapter.broadcast_message(
+        build_system_event(
+            message,
+            metadata={
+                "source": "kick_webhook",
+                "user_id": user_id,
+                **metadata,
+            },
+        )
+    )
+
+
+async def _handle_non_chat_event(
+    event_type: str,
+    event_payload: dict,
+    user_id: str,
+) -> JSONResponse:
+    actor = _extract_actor_name(event_payload)
+    settings = await load_effective_settings(user_id)
+
+    if event_type == "channel.followed":
+        message = f"Kick follow: {actor or 'usuario desconocido'}"
+        response = await response_gemini_events(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "channel.subscription.new":
+        message = f"Kick new subscriber: {actor or 'usuario desconocido'}"
+        response = await response_gemini_events(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "channel.subscription.renewal":
+        message = f"Kick resub: {actor or 'usuario desconocido'}"
+        response = await response_gemini_events(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "channel.subscription.gifts":
+        message = f"Kick gifted subs: {actor or 'usuario desconocido'}"
+        response = await response_gemini_events(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "channel.reward.redemption.updated":
+        reward_title = _extract_reward_title(event_payload)
+        message = f"Kick reward redemption: {reward_title or 'recompensa'} by {actor or 'usuario desconocido'}"
+        response = await response_gemini_rewards(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "kicks.gifted":
+        amount = _extract_gift_amount(event_payload)
+        gift_name = _extract_first_string(event_payload, ("name", "type", "label", "title"))
+        message = f"Kick gifted: {amount or '0'} {gift_name or 'kicks'} by {actor or 'usuario desconocido'}"
+        response = await response_gemini_rewards(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "moderation.banned":
+        reason = _extract_first_string(event_payload, ("reason", "message", "moderation_reason"))
+        message = f"Kick moderation banned: {actor or 'usuario desconocido'}"
+        if reason:
+            message = f"{message} reason: {reason}"
+        response = await response_gemini_events(message, user_id)
+        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "livestream.status.updated":
+        status = _extract_livestream_status(event_payload)
+        message = "Kick stream live" if status == "live" else "Kick stream offline" if status == "offline" else f"Kick stream status updated: {status}"
+        await _broadcast_system_notification(
+            user_id,
+            message,
+            {
+                "eventType": event_type,
+                "status": status,
+            },
+        )
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    if event_type == "livestream.metadata.updated":
+        title = _extract_first_string(event_payload, ("title", "stream_title"))
+        category = _extract_first_string(event_payload, ("category", "category_name", "category_title"))
+        message = "Kick stream metadata updated"
+        if title or category:
+            details = ", ".join(part for part in [f"title={title}" if title else "", f"category={category}" if category else ""] if part)
+            message = f"{message}: {details}"
+        await _broadcast_system_notification(
+            user_id,
+            message,
+            {
+                "eventType": event_type,
+                "title": title,
+                "category": category,
+            },
+        )
+        return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
+
+    _log_webhook(
+        "unhandled_event",
+        event_type=event_type,
+        subscription_id="n/a",
+        bot=False,
+        configured_channel=str(settings.get("kick_channel") or ""),
+    )
+    return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
 
 
 async def _resolve_user_id_from_subscription(subscription_id: str | None) -> tuple[str | None, bool]:
@@ -138,14 +321,6 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
         )
         return JSONResponse(status_code=200, content={"challenge": payload["challenge"]})
 
-    if event_type != "chat.message.sent":
-        _log_webhook(
-            "ignored_event",
-            event_type=event_type,
-            subscription_id=subscription_id or "missing",
-        )
-        return JSONResponse(status_code=200, content={"ok": True})
-
     event_payload = _extract_event_payload(payload)
     user_id, bot = await _resolve_user_id_from_subscription(subscription_id)
     if not user_id:
@@ -155,6 +330,15 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
             subscription_id=subscription_id or "missing",
         )
         return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
+
+    if event_type != "chat.message.sent":
+        _log_webhook(
+            "event_route",
+            event_type=event_type,
+            subscription_id=subscription_id or "missing",
+            bot=bot,
+        )
+        return await _handle_non_chat_event(event_type, event_payload, user_id)
 
     settings = await load_effective_settings(user_id)
     feature_flags = resolve_feature_flags(settings)
