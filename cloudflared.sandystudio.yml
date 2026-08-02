@@ -1,0 +1,7 @@
+tunnel: ec6294ed-05a3-4ded-aa87-a0a8f5097b1e
+credentials-file: C:\Users\andre\.cloudflared\ec6294ed-05a3-4ded-aa87-a0a8f5097b1e.json
+
+ingress:
+  - hostname: www.sandystudio.net
+    service: http://localhost:8000
+  - service: http_status:404
