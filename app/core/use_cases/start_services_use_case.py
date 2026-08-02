@@ -2,10 +2,9 @@ from app.adapters.twitch_services import TwitchService
 from app.domain.exceptions import EventSubError
 from app.services.client_settings import load_effective_settings
 from app.services.twitch.lifecycle import (
-    arm,
     register_activity_and_monitor,
-    set_running,
     stop_monitor,
+    set_running,
 )
 
 
@@ -36,7 +35,6 @@ class StartServicesCase:
             settings = await load_effective_settings(user_id)
             service_mode = str(settings.get("service_mode") or "manual").lower()
             if service_mode == "hybrid":
-                await arm(user_id)
                 await register_activity_and_monitor(user_id)
             else:
                 await stop_monitor(user_id)

@@ -175,14 +175,27 @@ async def _ensure_twitch_channel(user_id: str, twitch_user) -> None:
     await save_effective_settings({"twitch_channel": str(channel_name)}, user_id)
 
 
-async def get_profile_users(bot: bool = False):
+async def get_profile_users(bot: bool = False, user_id: str | None = None):
     global twitch
     global twitch_bot
     global user_bot
     global user
+    owner_id = _resolve_user_id(user_id)
     if bot:
+        if twitch_bot is None:
+            tokens = await get_tokens(owner_id, True)
+            if not tokens:
+                raise Exception("No existe una sesión de bot autenticada para este usuario")
+            twitch_bot = await authenticate_twitch(
+                owner_id, tokens["token"], tokens["refresh_token"]
+            )
         user_bot = await first(twitch_bot.get_users())
         return user_bot
+    if twitch is None:
+        tokens = await get_tokens(owner_id, False)
+        if not tokens:
+            raise Exception("No existe una sesión de Twitch autenticada para este usuario")
+        twitch = await authenticate_twitch(owner_id, tokens["token"], tokens["refresh_token"])
     user = await first(twitch.get_users())
     return user
 

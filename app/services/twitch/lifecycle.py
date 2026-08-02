@@ -55,7 +55,6 @@ async def arm(user_id: str | None = None) -> None:
 async def disarm(user_id: str | None = None) -> None:
     state = await _get_state(user_id)
     state.armed = False
-    await stop_services(user_id)
     await stop_monitor(user_id)
 
 
@@ -112,6 +111,7 @@ async def stop_services(user_id: str | None = None) -> None:
     from app.services.twitch.twitch import close_chat_instance, close_eventsub
 
     resolved = _key(user_id)
+    print(f"[TWITCH LIFECYCLE] Deteniendo chat y EventSub para {resolved}")
     await close_chat_instance()
     await close_eventsub()
     state = await _get_state(resolved)
@@ -188,6 +188,7 @@ async def stop_monitor(user_id: str | None = None) -> None:
     state = await _get_state(resolved)
     task = state.monitor_task
     state.armed = False
+    print(f"[TWITCH LIFECYCLE] Deteniendo monitor para {resolved}")
     if task and not task.done():
         task.cancel()
         try:

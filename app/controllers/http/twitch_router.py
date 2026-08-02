@@ -7,6 +7,7 @@ from app.adapters.twitch_services import TwitchService
 from app.core.use_cases.auth_use_case import AuthUseCase
 from app.core.use_cases.get_profile import GetProfileUseCase
 from app.core.use_cases.get_tokens_use_case import GetTokensUseCase
+from app.core.use_cases.logout_twitch_use_case import LogoutTwitchUseCase
 from app.core.use_cases.save_tokens_use_case import SaveTokensUseCase
 from app.core.use_cases.start_services_use_case import StartServicesCase
 from app.core.use_cases.stop_services_use_case import StopServicesUseCase
@@ -19,6 +20,7 @@ router = APIRouter(tags=["Twitch"])
 use_case_auth = AuthUseCase(TwitchService())
 use_case_start = StartServicesCase(TwitchService())
 use_case_stop = StopServicesUseCase(TwitchService())
+use_case_logout = LogoutTwitchUseCase(TwitchService())
 use_case_tokens = GetTokensUseCase(TwitchService())
 use_case_save_tokens = SaveTokensUseCase(TwitchService())
 
@@ -66,7 +68,18 @@ async def stop_services(
 ):
     try:
         await use_case_stop.execute(current_user.user_id)
-        return JSONResponse(status_code=200, content={"message": "Servicios detenidos"})
+        return JSONResponse(
+            status_code=200, content={"message": "Automatización pausada"}
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.delete("/auth")
+async def logout_twitch(current_user: ClerkUser = Depends(verify_clerk_session)):
+    try:
+        await use_case_logout.execute()
+        return JSONResponse(status_code=200, content={"message": "Sesión de Twitch cerrada"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
@@ -88,7 +101,7 @@ async def get_profile(
 ):
     try:
         use_case = GetProfileUseCase(TwitchService())
-        user = await use_case.execute(bot)
+        user = await use_case.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"profile": user})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
