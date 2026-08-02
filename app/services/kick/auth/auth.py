@@ -500,6 +500,8 @@ async def create_kick_instance(
     if token is None or refresh_token is None:
         raise Exception("No existen tokens de Kick guardados para este usuario")
 
+    await save_tokens(owner_id, token, refresh_token, bot)
+
     try:
         if bot:
             kick_bot = await authenticate_kick(owner_id, token, refresh_token)
