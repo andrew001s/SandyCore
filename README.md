@@ -84,21 +84,6 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
 
    Esto iniciará el servidor en `http://127.0.0.1:8000`.
 
-5. **Exponer el backend con Cloudflare Tunnel**:
-
-   Si quieres recibir webhooks de Kick en el dominio `www.sandystudio.net`, usa el archivo
-   `cloudflared.sandystudio.yml` y arranca el túnel con:
-
-   ```bash
-   cloudflared tunnel --config cloudflared.sandystudio.yml run
-   ```
-
-   La URL pública del webhook queda en:
-
-   ```text
-   https://www.sandystudio.net/kick/webhook
-   ```
-
 ---
 
 ---

@@ -25,9 +25,6 @@ class Config:
     KICK_CLIENT_ID = os.getenv("KICK_CLIENT_ID")
     KICK_SECRET = os.getenv("KICK_SECRET")
     KICK_REDIRECT_URI = os.getenv("KICK_REDIRECT_URI")
-    KICK_PUBLIC_BASE_URL = os.getenv(
-        "KICK_PUBLIC_BASE_URL", "https://www.sandystudio.net"
-    )
     KICK_API_BASE_URL = os.getenv("KICK_API_BASE_URL", "https://api.kick.com")
     KICK_OAUTH_BASE_URL = os.getenv("KICK_OAUTH_BASE_URL", "https://id.kick.com")
     KICK_VERIFY_WEBHOOKS = os.getenv("KICK_VERIFY_WEBHOOKS", "true").lower() == "true"
