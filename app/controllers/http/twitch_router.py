@@ -25,6 +25,15 @@ use_case_tokens = GetTokensUseCase(TwitchService())
 use_case_save_tokens = SaveTokensUseCase(TwitchService())
 
 
+def _is_missing_tokens_error(error: Exception) -> bool:
+    message = str(error)
+    return (
+        "No existe una sesión de Twitch autenticada para este usuario" in message
+        or "No existe una sesión de bot autenticada para este usuario" in message
+        or "No existen tokens de Twitch guardados para este usuario" in message
+    )
+
+
 @router.post("/auth")
 async def authenticate_twitch_user(
     message: TwitchAuth, current_user: ClerkUser = Depends(verify_clerk_session)
@@ -104,6 +113,15 @@ async def get_profile(
         user = await use_case.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"profile": user})
     except Exception as e:
+        if _is_missing_tokens_error(e):
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "profile": None,
+                    "authenticated": False,
+                    "message": "No hay tokens de Twitch guardados para este usuario",
+                },
+            )
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
