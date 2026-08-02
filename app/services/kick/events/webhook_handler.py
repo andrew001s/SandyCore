@@ -78,6 +78,16 @@ def _extract_message_text(event_payload: dict) -> str:
     return ""
 
 
+def _extract_message_id(event_payload: dict) -> str:
+    value = event_payload.get("message_id")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    value = event_payload.get("id")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return ""
+
+
 def _extract_first_string(event_payload: dict, keys: tuple[str, ...]) -> str:
     for key in keys:
         value = event_payload.get(key)
@@ -342,16 +352,8 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
 
     settings = await load_effective_settings(user_id)
     feature_flags = resolve_feature_flags(settings)
-    if not feature_flags.get("chat_replies", True):
-        _log_webhook(
-            "chat_replies_disabled",
-            event_type=event_type,
-            subscription_id=subscription_id or "missing",
-            bot=bot,
-        )
-        return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
-
     username = _extract_username(event_payload)
+    message_id = _extract_message_id(event_payload)
     message_text = _extract_message_text(event_payload)
     if not message_text:
         _log_webhook(
@@ -378,14 +380,63 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
         )
         return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
 
+    kick_client = await auth.authenticate_kick(user_id)
+
     if await check_banned_words(message_text, user_id):
         _log_webhook(
             "blocked_banned_words",
             event_type=event_type,
             subscription_id=subscription_id or "missing",
             bot=bot,
+            message_id=message_id or "missing",
         )
+        try:
+            if message_id:
+                await kick_client.delete_chat_message(message_id)
+                _log_webhook(
+                    "deleted_message",
+                    event_type=event_type,
+                    subscription_id=subscription_id or "missing",
+                    bot=bot,
+                    message_id=message_id,
+                )
+        except Exception as exc:
+            print(f"[KICK WEBHOOK] No se pudo borrar el mensaje: {repr(exc)}")
+
+        warning_message = (
+            f"@{username} tu mensaje fue eliminado por moderación. "
+            "Evita usar palabras prohibidas."
+        ).strip()
+        try:
+            channel_id = (
+                event_payload.get("channel_id")
+                or event_payload.get("broadcaster_user_id")
+                or event_payload.get("room_id")
+            )
+            await kick_client.send_chat_message(
+                warning_message,
+                str(channel_id) if channel_id else None,
+            )
+            _log_webhook(
+                "warning_sent",
+                event_type=event_type,
+                subscription_id=subscription_id or "missing",
+                bot=bot,
+                message_id=message_id or "missing",
+            )
+        except Exception as exc:
+            print(f"[KICK WEBHOOK] No se pudo enviar advertencia: {repr(exc)}")
+
         return JSONResponse(status_code=200, content={"ok": True, "blocked": True})
+
+    if not feature_flags.get("chat_replies", True):
+        _log_webhook(
+            "chat_replies_disabled",
+            event_type=event_type,
+            subscription_id=subscription_id or "missing",
+            bot=bot,
+        )
+        return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
 
     _log_webhook(
         "processing_chat_message",
