@@ -58,6 +58,28 @@ def generate_pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
+def _normalize_public_key(value: object) -> str:
+    if value is None:
+        raise Exception("No se pudo obtener la public key de Kick")
+
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="ignore")
+
+    text = str(value).strip()
+    if not text:
+        raise Exception("No se pudo obtener la public key de Kick")
+
+    if text.startswith('"') and text.endswith('"'):
+        try:
+            text = json.loads(text)
+        except Exception:
+            text = text[1:-1]
+
+    text = text.replace("\\n", "\n").replace("\\r", "\r")
+    text = text.strip()
+    return text
+
+
 def build_authorize_url(
     state: str,
     code_challenge: str,
@@ -300,8 +322,8 @@ async def get_public_key() -> str:
             )
         text = resp.text.strip()
         if "BEGIN PUBLIC KEY" in text:
-            _kick_public_key_pem = text
-            return text
+            _kick_public_key_pem = _normalize_public_key(text)
+            return _kick_public_key_pem
         payload = resp.json()
         key = (
             payload.get("public_key")
@@ -309,20 +331,18 @@ async def get_public_key() -> str:
             or payload.get("key")
             or payload.get("data")
         )
-        if not key:
-            raise Exception("No se pudo obtener la public key de Kick")
-        _kick_public_key_pem = str(key)
+        _kick_public_key_pem = _normalize_public_key(key)
         return _kick_public_key_pem
 
 
 async def verify_webhook_signature(
     message_id: str, timestamp: str, body: bytes, signature_b64: str
 ) -> bool:
-    public_key_pem = await get_public_key()
-    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
-    signed_payload = f"{message_id}.{timestamp}.{body.decode('utf-8')}".encode("utf-8")
-    signature = base64.b64decode(signature_b64)
     try:
+        public_key_pem = await get_public_key()
+        public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+        signed_payload = f"{message_id}.{timestamp}.{body.decode('utf-8')}".encode("utf-8")
+        signature = base64.b64decode(signature_b64)
         public_key.verify(signature, signed_payload, padding.PKCS1v15(), hashes.SHA256())
         return True
     except Exception:
