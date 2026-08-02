@@ -7,6 +7,8 @@ from app.core.config import config
 
 _TABLE_USER_SETTINGS = "user_settings"
 _TABLE_TWITCH_TOKENS = "twitch_tokens"
+_TABLE_KICK_TOKENS = "kick_tokens"
+_TABLE_KICK_EVENT_SUBSCRIPTIONS = "kick_event_subscriptions"
 
 
 def _supabase_credentials() -> tuple[str, str]:
@@ -137,3 +139,94 @@ def get_twitch_tokens_sync(user_id: str, bot: bool = False) -> dict[str, str] | 
 
 async def get_twitch_tokens(user_id: str, bot: bool = False) -> dict[str, str] | None:
     return await asyncio.to_thread(get_twitch_tokens_sync, user_id, bot)
+
+
+def save_kick_tokens_sync(
+    user_id: str, token: str, refresh_token: str, bot: bool = False
+) -> None:
+    client = _supabase_client()
+    payload = {
+        "user_id": user_id,
+        "bot": bool(bot),
+        "access_token": token,
+        "refresh_token": refresh_token,
+    }
+    client.table(_TABLE_KICK_TOKENS).upsert(
+        payload,
+        on_conflict="user_id,bot",
+    ).execute()
+
+
+async def save_kick_tokens(
+    user_id: str, token: str, refresh_token: str, bot: bool = False
+) -> None:
+    await asyncio.to_thread(save_kick_tokens_sync, user_id, token, refresh_token, bot)
+
+
+def get_kick_tokens_sync(user_id: str, bot: bool = False) -> dict[str, str] | None:
+    client = _supabase_client()
+    response = (
+        client.table(_TABLE_KICK_TOKENS)
+        .select("access_token, refresh_token")
+        .eq("user_id", user_id)
+        .eq("bot", bool(bot))
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(response, "data", None) or []
+    if not rows:
+        return None
+    row = rows[0]
+    return {
+        "token": row["access_token"],
+        "refresh_token": row["refresh_token"],
+    }
+
+
+async def get_kick_tokens(user_id: str, bot: bool = False) -> dict[str, str] | None:
+    return await asyncio.to_thread(get_kick_tokens_sync, user_id, bot)
+
+
+def save_kick_event_subscription_sync(
+    user_id: str, subscription_id: str, event_name: str, bot: bool = False
+) -> None:
+    client = _supabase_client()
+    payload = {
+        "subscription_id": subscription_id,
+        "user_id": user_id,
+        "bot": bool(bot),
+        "event_name": event_name,
+    }
+    client.table(_TABLE_KICK_EVENT_SUBSCRIPTIONS).upsert(
+        payload,
+        on_conflict="subscription_id",
+    ).execute()
+
+
+async def save_kick_event_subscription(
+    user_id: str, subscription_id: str, event_name: str, bot: bool = False
+) -> None:
+    await asyncio.to_thread(
+        save_kick_event_subscription_sync, user_id, subscription_id, event_name, bot
+    )
+
+
+def get_kick_event_subscription_sync(subscription_id: str) -> dict[str, Any] | None:
+    client = _supabase_client()
+    response = (
+        client.table(_TABLE_KICK_EVENT_SUBSCRIPTIONS)
+        .select("user_id, bot, event_name")
+        .eq("subscription_id", subscription_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(response, "data", None) or []
+    if not rows:
+        return None
+    return rows[0]
+
+
+async def get_kick_event_subscription(
+    subscription_id: str,
+) -> dict[str, Any] | None:
+    return await asyncio.to_thread(get_kick_event_subscription_sync, subscription_id)

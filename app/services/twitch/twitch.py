@@ -1,12 +1,12 @@
 import app.services.twitch.auth.auth as auth
 from app.services.twitch.chat.chat_handler import close_chat, setup_chat
 from app.services.twitch.events.eventsub_handler import close_eventsub, setup_eventsub
-from app.services.twitch.lifecycle import disarm
+from app.services.twitch.lifecycle import disarm, stop_services
 
 
-async def get_user_profile(bot=False) -> dict:
+async def get_user_profile(bot=False, user_id=None) -> dict:
     try:
-        user = auth.user_bot if bot else auth.user
+        user = await auth.get_profile_users(bot, user_id)
         if user is None:
             raise Exception("Usuario no autenticado")
         return user
@@ -15,10 +15,14 @@ async def get_user_profile(bot=False) -> dict:
 
 
 async def close_twitch():
+    print("[TWITCH SERVICE] close_twitch() -> stop runtime")
+    await stop_services()
     await disarm()
+
+
+async def logout_twitch():
+    print("[TWITCH SERVICE] logout_twitch() -> close auth")
     await auth.close_twitch()
-    await close_chat_instance()
-    await close_eventsub()
 
 
 async def start_bot():

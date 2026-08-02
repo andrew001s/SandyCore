@@ -8,8 +8,10 @@ from app.services.storage.supabase_store import get_user_settings, upsert_user_s
 
 SETTINGS_KEYS = {
     "twitch_channel",
+    "kick_channel",
     "gemini_api_key",
     "twitch_bot_account",
+    "kick_bot_account",
     "ai_provider",
     "openrouter_api_key",
     "openrouter_model",
@@ -57,9 +59,9 @@ def _merge_dicts(base: dict[str, Any], override: dict[str, Any] | None) -> dict[
 
 def _defaults() -> dict[str, Any]:
     return {
-        "twitch_channel": os.getenv("TWITCH_CHANNEL"),
         "gemini_api_key": os.getenv("GEMINI_API_KEY"),
         "twitch_bot_account": os.getenv("TWITCH_BOT_ACCOUNT"),
+        "kick_bot_account": os.getenv("KICK_BOT_ACCOUNT"),
         "ai_provider": os.getenv("AI_PROVIDER", "gemini"),
         "openrouter_model": os.getenv(
             "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"

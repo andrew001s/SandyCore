@@ -3,51 +3,44 @@ from fastapi import Depends
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-from app.adapters.twitch_services import TwitchService
-from app.core.use_cases.auth_use_case import AuthUseCase
-from app.core.use_cases.get_profile import GetProfileUseCase
-from app.core.use_cases.get_tokens_use_case import GetTokensUseCase
-from app.core.use_cases.logout_twitch_use_case import LogoutTwitchUseCase
-from app.core.use_cases.save_tokens_use_case import SaveTokensUseCase
-from app.core.use_cases.start_services_use_case import StartServicesCase
-from app.core.use_cases.stop_services_use_case import StopServicesUseCase
+from app.adapters.kick_services import KickService
+from app.core.use_cases.get_kick_profile import GetKickProfileUseCase
+from app.core.use_cases.get_kick_tokens_use_case import GetKickTokensUseCase
+from app.core.use_cases.kick_auth_use_case import KickAuthUseCase
+from app.core.use_cases.logout_kick_use_case import LogoutKickUseCase
+from app.core.use_cases.save_kick_tokens_use_case import SaveKickTokensUseCase
+from app.core.use_cases.start_kick_services_use_case import StartKickServicesCase
+from app.core.use_cases.stop_kick_services_use_case import StopKickServicesUseCase
 from app.core.security.clerk import ClerkUser, verify_clerk_session
+from app.models.kick_auth_model import KickAuth
 from app.models.tokens_model import TokenModel
-from app.models.twitch_auth_model import TwitchAuth
-from app.services.twitch.lifecycle import get_service_status
+from app.services.kick.lifecycle import get_service_status
 
-router = APIRouter(tags=["Twitch"])
-use_case_auth = AuthUseCase(TwitchService())
-use_case_start = StartServicesCase(TwitchService())
-use_case_stop = StopServicesUseCase(TwitchService())
-use_case_logout = LogoutTwitchUseCase(TwitchService())
-use_case_tokens = GetTokensUseCase(TwitchService())
-use_case_save_tokens = SaveTokensUseCase(TwitchService())
+router = APIRouter(prefix="/kick", tags=["Kick"])
+use_case_auth = KickAuthUseCase(KickService())
+use_case_start = StartKickServicesCase(KickService())
+use_case_stop = StopKickServicesUseCase(KickService())
+use_case_logout = LogoutKickUseCase(KickService())
+use_case_tokens = GetKickTokensUseCase(KickService())
+use_case_save_tokens = SaveKickTokensUseCase(KickService())
 
 
 @router.post("/auth")
-async def authenticate_twitch_user(
-    message: TwitchAuth, current_user: ClerkUser = Depends(verify_clerk_session)
+async def authenticate_kick_user(
+    message: KickAuth, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        if message.bot:
-            await use_case_auth.execute(
-                current_user.user_id,
-                message.token,
-                message.refresh_token,
-                message.bot,
-            )
-        else:
-            await use_case_auth.execute(
-                current_user.user_id, message.token, message.refresh_token, message.bot
-            )
-        return JSONResponse(
-            status_code=200, content={"message": "Autenticación exitosa"}
+        await use_case_auth.execute(
+            current_user.user_id,
+            message.token,
+            message.refresh_token,
+            message.bot,
         )
+        return JSONResponse(status_code=200, content={"message": "Autenticación exitosa"})
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[AUTH ERROR] {repr(e)}")
+        print(f"[KICK AUTH ERROR] {repr(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
@@ -68,18 +61,16 @@ async def stop_services(
 ):
     try:
         await use_case_stop.execute(current_user.user_id)
-        return JSONResponse(
-            status_code=200, content={"message": "Automatización pausada"}
-        )
+        return JSONResponse(status_code=200, content={"message": "Automatización pausada"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @router.delete("/auth")
-async def logout_twitch(current_user: ClerkUser = Depends(verify_clerk_session)):
+async def logout_kick(current_user: ClerkUser = Depends(verify_clerk_session)):
     try:
         await use_case_logout.execute()
-        return JSONResponse(status_code=200, content={"message": "Sesión de Twitch cerrada"})
+        return JSONResponse(status_code=200, content={"message": "Sesión de Kick cerrada"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
@@ -100,7 +91,7 @@ async def get_profile(
     bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        use_case = GetProfileUseCase(TwitchService())
+        use_case = GetKickProfileUseCase(KickService())
         user = await use_case.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"profile": user})
     except Exception as e:
@@ -126,8 +117,6 @@ async def save_tokens(
         await use_case_save_tokens.execute(
             current_user.user_id, bot, tokens.token, tokens.refresh_token
         )
-        return JSONResponse(
-            status_code=200, content={"message": "Tokens guardados exitosamente"}
-        )
+        return JSONResponse(status_code=200, content={"message": "Tokens guardados exitosamente"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

@@ -59,62 +59,41 @@ async def disarm(user_id: str | None = None) -> None:
 
 
 async def _stream_is_live(user_id: str | None = None) -> bool:
-    from app.services.twitch.twitch import auth
+    from app.services.kick.auth import auth
 
-    twitch_client = auth.twitch
+    kick_client = auth.kick
     broadcaster = getattr(auth, "user", None)
-    if twitch_client is None:
-        return False
-    if broadcaster is None:
+    if kick_client is None or not broadcaster:
         return False
 
-    broadcaster_id = getattr(broadcaster, "id", None)
+    broadcaster_id = broadcaster.get("id") if isinstance(broadcaster, dict) else None
     if not broadcaster_id:
         return False
 
-    streams = twitch_client.get_streams(user_id=[broadcaster_id], first=1)
-    async for _stream in streams:
-        return True
-    return False
+    streams = await kick_client.get_livestreams(broadcaster_user_id=[str(broadcaster_id)])
+    if isinstance(streams, dict) and "data" in streams:
+        streams = streams["data"]
+    return bool(streams)
 
 
 async def start_services(user_id: str | None = None) -> None:
-    from app.services.twitch.twitch import setup_chat_instance, setup_eventsub_instance
-    from app.services.twitch.twitch import auth
+    from app.services.kick.auth import auth
 
     resolved = _key(user_id)
-    twitch_client = auth.twitch
-    broadcaster = getattr(auth, "user", None)
-    if twitch_client is None:
-        raise RuntimeError("No hay instancia de Twitch autenticada para iniciar servicios")
-
-    broadcaster_id = getattr(broadcaster, "id", None) if broadcaster is not None else None
-    if not broadcaster_id:
-        raise RuntimeError("No se pudo resolver el broadcaster para iniciar servicios")
-
-    try:
-        await setup_chat_instance(twitch_client, user_id=resolved)
-        await setup_eventsub_instance(twitch_client, broadcaster_id)
-    except Exception:
-        from app.services.twitch.twitch import close_chat_instance, close_eventsub
-
-        await close_chat_instance()
-        await close_eventsub()
-        raise
+    if auth.kick is None:
+        raise RuntimeError("No hay instancia de Kick autenticada para iniciar servicios")
 
     state = await _get_state(resolved)
     state.running = True
     await mark_activity(resolved)
+    await start_monitor(resolved)
 
 
 async def stop_services(user_id: str | None = None) -> None:
-    from app.services.twitch.twitch import close_chat_instance, close_eventsub
-
     resolved = _key(user_id)
-    print(f"[TWITCH LIFECYCLE] Deteniendo chat y EventSub para {resolved}")
-    await close_chat_instance()
-    await close_eventsub()
     state = await _get_state(resolved)
+    print(f"[KICK LIFECYCLE] Deteniendo monitor para {resolved}")
+    await stop_monitor(resolved)
     state.running = False
 
 
@@ -188,7 +167,7 @@ async def stop_monitor(user_id: str | None = None) -> None:
     state = await _get_state(resolved)
     task = state.monitor_task
     state.armed = False
-    print(f"[TWITCH LIFECYCLE] Deteniendo monitor para {resolved}")
+    print(f"[KICK LIFECYCLE] Deteniendo monitor para {resolved}")
     if task and not task.done():
         task.cancel()
         try:

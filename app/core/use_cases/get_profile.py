@@ -6,6 +6,6 @@ class GetProfileUseCase:
     def __init__(self, twitch_service: TwitchService):
         self.twitch_service = twitch_service
 
-    async def execute(self, bot: bool = False) -> ProfileModel:
-        user = await self.twitch_service.get_profile(bot)
+    async def execute(self, user_id: str | None = None, bot: bool = False) -> ProfileModel:
+        user = await self.twitch_service.get_profile(user_id, bot)
         return user

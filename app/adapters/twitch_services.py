@@ -14,10 +14,10 @@ class TwitchService:
 
         return await auth.create_twitch_instance(user_id, bot, token, refresh_token)
 
-    async def get_profile(self, bot: bool = False):
+    async def get_profile(self, user_id: str | None = None, bot: bool = False):
         from app.services.twitch.twitch import auth
 
-        user = await auth.get_profile_users(bot)
+        user = await auth.get_profile_users(bot, user_id)
         if user is None:
             raise Exception("Usuario no autenticado")
 
@@ -60,9 +60,14 @@ class TwitchService:
             raise EventSubError(str(e))
 
     async def close_twitch(self):
-        from app.services.twitch.twitch import auth
+        from app.services.twitch.twitch import close_twitch as close_twitch_service
 
-        await auth.close_twitch()
+        await close_twitch_service()
+
+    async def logout_twitch(self):
+        from app.services.twitch.twitch import logout_twitch as logout_twitch_service
+
+        await logout_twitch_service()
 
     async def close_eventsub(self):
         from app.services.twitch.twitch import close_eventsub
