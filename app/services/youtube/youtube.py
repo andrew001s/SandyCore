@@ -13,8 +13,13 @@ from app.services.gemini import response_gemini_events, response_gemini_rewards,
 from app.services.moderator import check_banned_words
 from app.services.youtube.auth.auth import (
     YouTubeAPIClient,
+    build_authorization_url,
     authenticate_youtube,
-    get_google_oauth_token,
+    delete_tokens as delete_youtube_saved_tokens,
+    exchange_authorization_code,
+    get_tokens as get_saved_youtube_tokens,
+    revoke_token,
+    save_tokens as save_youtube_tokens,
 )
 
 
@@ -289,15 +294,47 @@ async def get_profile_users(bot: bool = False, user_id: str | None = None):
 async def get_tokens(user_id: str | None = None, bot: bool = False):
     _ = bot
     resolved = _resolve_user_id(user_id)
-    token = await get_google_oauth_token(resolved)
+    token = await get_saved_youtube_tokens(resolved)
     return {
         "provider": "google",
-        "authenticated": bool(token.get("token")),
+        "authenticated": bool(token and token.get("token")),
         "user_id": resolved,
-        "label": token.get("label"),
-        "expires_at": token.get("expiresAt"),
-        "scopes": token.get("scopes") or [],
+        "expires_at": token.get("expires_at") if token else None,
+        "scopes": token.get("scope") if token else [],
+        "email": token.get("email") if token else None,
+        "provider_account_id": token.get("provider_account_id") if token else None,
     }
+
+
+async def start_auth(
+    user_id: str | None = None,
+    *,
+    redirect_uri: str | None = None,
+) -> dict[str, str]:
+    resolved = _resolve_user_id(user_id)
+    return build_authorization_url(resolved, redirect_uri=redirect_uri)
+
+
+async def complete_auth(
+    code: str,
+    state: str,
+    *,
+    redirect_uri: str | None = None,
+) -> dict[str, Any]:
+    token_payload = await exchange_authorization_code(
+        code,
+        state,
+        redirect_uri=redirect_uri,
+    )
+    await save_youtube_tokens(
+        token_payload["user_id"],
+        token_payload["token"],
+        token_payload["refresh_token"],
+        expires_at=token_payload.get("expires_at"),
+        scope=token_payload.get("scope"),
+        token_type=token_payload.get("token_type"),
+    )
+    return token_payload
 
 
 async def start_services(user_id: str | None = None) -> None:
@@ -583,3 +620,14 @@ async def transition_broadcast(user_id: str | None = None, broadcast_id: str | N
     live_chat_id = _extract_live_chat_id(broadcast)
     await save_channel_context(resolved, (await client.get_channel()), broadcast, live_chat_id or None)
     return response
+
+
+async def logout(user_id: str | None = None) -> None:
+    resolved = _resolve_user_id(user_id)
+    tokens = await get_saved_youtube_tokens(resolved)
+    if tokens:
+        try:
+            await revoke_token(tokens.get("refresh_token") or tokens.get("token") or "")
+        except Exception as exc:
+            print(f"[YOUTUBE AUTH] No se pudo revocar el token: {repr(exc)}")
+    await delete_youtube_saved_tokens(resolved)

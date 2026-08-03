@@ -12,6 +12,25 @@ class YouTubeService:
 
         return await get_tokens(user_id, bot)
 
+    async def start_auth(
+        self,
+        user_id: str | None = None,
+        redirect_uri: str | None = None,
+    ):
+        from app.services.youtube.youtube import start_auth
+
+        return await start_auth(user_id, redirect_uri=redirect_uri)
+
+    async def complete_auth(
+        self,
+        code: str,
+        state: str,
+        redirect_uri: str | None = None,
+    ):
+        from app.services.youtube.youtube import complete_auth
+
+        return await complete_auth(code, state, redirect_uri=redirect_uri)
+
     async def start_services(self, user_id: str | None = None):
         from app.services.youtube.youtube import start_services
 
@@ -61,3 +80,8 @@ class YouTubeService:
         from app.services.youtube.youtube import transition_broadcast
 
         return await transition_broadcast(user_id, broadcast_id, status)
+
+    async def logout(self, user_id: str | None = None):
+        from app.services.youtube.youtube import logout
+
+        return await logout(user_id)

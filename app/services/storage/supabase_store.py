@@ -9,6 +9,7 @@ _TABLE_USER_SETTINGS = "user_settings"
 _TABLE_TWITCH_TOKENS = "twitch_tokens"
 _TABLE_KICK_TOKENS = "kick_tokens"
 _TABLE_KICK_EVENT_SUBSCRIPTIONS = "kick_event_subscriptions"
+_TABLE_YOUTUBE_TOKENS = "youtube_tokens"
 
 
 def _supabase_credentials() -> tuple[str, str]:
@@ -230,3 +231,98 @@ async def get_kick_event_subscription(
     subscription_id: str,
 ) -> dict[str, Any] | None:
     return await asyncio.to_thread(get_kick_event_subscription_sync, subscription_id)
+
+
+def save_youtube_tokens_sync(
+    user_id: str,
+    access_token: str,
+    refresh_token: str,
+    expires_at: int | None = None,
+    scope: str | list[str] | None = None,
+    token_type: str | None = None,
+    provider_account_id: str | None = None,
+    email: str | None = None,
+) -> None:
+    client = _supabase_client()
+    payload = {
+        "user_id": user_id,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_at": expires_at,
+        "scope": json.dumps(scope) if isinstance(scope, list) else scope,
+        "token_type": token_type,
+        "provider_account_id": provider_account_id,
+        "email": email,
+    }
+    client.table(_TABLE_YOUTUBE_TOKENS).upsert(
+        payload,
+        on_conflict="user_id",
+    ).execute()
+
+
+async def save_youtube_tokens(
+    user_id: str,
+    access_token: str,
+    refresh_token: str,
+    expires_at: int | None = None,
+    scope: str | list[str] | None = None,
+    token_type: str | None = None,
+    provider_account_id: str | None = None,
+    email: str | None = None,
+) -> None:
+    await asyncio.to_thread(
+        save_youtube_tokens_sync,
+        user_id,
+        access_token,
+        refresh_token,
+        expires_at,
+        scope,
+        token_type,
+        provider_account_id,
+        email,
+    )
+
+
+def get_youtube_tokens_sync(user_id: str) -> dict[str, Any] | None:
+    client = _supabase_client()
+    response = (
+        client.table(_TABLE_YOUTUBE_TOKENS)
+        .select(
+            "access_token, refresh_token, expires_at, scope, token_type, provider_account_id, email"
+        )
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(response, "data", None) or []
+    if not rows:
+        return None
+    row = rows[0]
+    scope = row.get("scope")
+    if isinstance(scope, str):
+        try:
+            scope = json.loads(scope)
+        except Exception:
+            pass
+    return {
+        "token": row.get("access_token"),
+        "refresh_token": row.get("refresh_token"),
+        "expires_at": row.get("expires_at"),
+        "scope": scope,
+        "token_type": row.get("token_type"),
+        "provider_account_id": row.get("provider_account_id"),
+        "email": row.get("email"),
+    }
+
+
+async def get_youtube_tokens(user_id: str) -> dict[str, Any] | None:
+    return await asyncio.to_thread(get_youtube_tokens_sync, user_id)
+
+
+def delete_youtube_tokens_sync(user_id: str) -> None:
+    client = _supabase_client()
+    client.table(_TABLE_YOUTUBE_TOKENS).delete().eq("user_id", user_id).execute()
+
+
+async def delete_youtube_tokens(user_id: str) -> None:
+    await asyncio.to_thread(delete_youtube_tokens_sync, user_id)

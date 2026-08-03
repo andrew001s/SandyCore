@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.adapters.youtube_services import YouTubeService
 from app.core.security.clerk import ClerkUser, verify_clerk_session
@@ -16,10 +16,61 @@ use_case = YouTubeService()
 def _is_missing_tokens_error(error: Exception) -> bool:
     message = str(error)
     return (
-        "No existen tokens de Google guardados para este usuario" in message
+        "No existen tokens de YouTube guardados para este usuario" in message
         or "No existe un canal de YouTube autenticado para este usuario" in message
-        or "No hay tokens de Google guardados para este usuario" in message
+        or "No hay tokens de YouTube guardados para este usuario" in message
     )
+
+
+@router.get("/auth/start")
+async def start_auth(
+    redirect_uri: str | None = None,
+    current_user: ClerkUser = Depends(verify_clerk_session),
+):
+    try:
+        data = await use_case.start_auth(current_user.user_id, redirect_uri)
+        return JSONResponse(status_code=200, content=data)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.get("/auth/callback")
+async def auth_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    if error:
+        return JSONResponse(status_code=400, content={"error": error})
+    if not code or not state:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Faltan code o state en el callback de YouTube"},
+        )
+    try:
+        await use_case.complete_auth(code, state)
+        return HTMLResponse(
+            content="""
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>YouTube conectado</title></head>
+  <body>
+    <script>
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'youtube-auth-complete', ok: true }, '*');
+        }
+      } catch (e) {}
+      window.close();
+    </script>
+    <p>YouTube conectado correctamente. Puedes cerrar esta ventana.</p>
+  </body>
+</html>
+            """,
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @router.get("/profile")
@@ -36,7 +87,7 @@ async def get_profile(
                 content={
                     "profile": None,
                     "authenticated": False,
-                    "message": "No hay tokens de Google guardados para este usuario",
+                    "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -56,7 +107,7 @@ async def get_tokens(
                 content={
                     "tokens": None,
                     "authenticated": False,
-                    "message": "No hay tokens de Google guardados para este usuario",
+                    "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -122,7 +173,7 @@ async def stats(current_user: ClerkUser = Depends(verify_clerk_session)):
                 content={
                     "stats": None,
                     "authenticated": False,
-                    "message": "No hay tokens de Google guardados para este usuario",
+                    "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -168,5 +219,14 @@ async def transition_broadcast(
             payload.status,
         )
         return JSONResponse(status_code=200, content={"broadcast": data})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.delete("/auth")
+async def logout_youtube(current_user: ClerkUser = Depends(verify_clerk_session)):
+    try:
+        await use_case.logout(current_user.user_id)
+        return JSONResponse(status_code=200, content={"message": "Sesión de YouTube cerrada"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
