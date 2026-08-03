@@ -261,16 +261,15 @@ async def get_profile_users(bot: bool = False, user_id: str | None = None):
     if not channel:
         raise Exception("No existe un canal de YouTube autenticado para este usuario")
 
-    broadcast: dict[str, Any] = {}
-    live_chat_id = ""
-    try:
-        broadcasts = await client.list_broadcasts(broadcast_status="active")
-        broadcast = _extract_live_broadcast(broadcasts or {})
-        live_chat_id = _extract_live_chat_id(broadcast)
-    except Exception as exc:
-        print(f"[YOUTUBE] No se pudo resolver broadcast activo para perfil: {repr(exc)}")
-
-    await save_channel_context(resolved, channel, broadcast, live_chat_id or None)
+    settings = await load_effective_settings(resolved)
+    broadcast_id = _as_text(settings.get("youtube_broadcast_id")) or None
+    live_chat_id = _as_text(settings.get("youtube_live_chat_id")) or None
+    await save_channel_context(
+        resolved,
+        channel,
+        {"id": broadcast_id} if broadcast_id else None,
+        live_chat_id,
+    )
     snippet = channel.get("snippet") or {}
     statistics = channel.get("statistics") or {}
     content_details = channel.get("contentDetails") or {}
@@ -287,7 +286,7 @@ async def get_profile_users(bot: bool = False, user_id: str | None = None):
         "video_count": statistics.get("videoCount"),
         "uploads_playlist_id": (content_details.get("relatedPlaylists") or {}).get("uploads"),
         "live_chat_id": live_chat_id or None,
-        "broadcast_id": broadcast.get("id"),
+        "broadcast_id": broadcast_id,
     }
 
 
