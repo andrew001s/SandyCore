@@ -592,13 +592,17 @@ async def send_chat_message(user_id: str | None = None, live_chat_id: str | None
     client = await _get_client(user_id)
     resolved = _resolve_user_id(user_id)
     settings = await load_effective_settings(resolved)
-    chat_id = _as_text(live_chat_id) or _as_text(settings.get("youtube_live_chat_id"))
+    state = await _get_state(resolved)
+    chat_id = (
+        _as_text(live_chat_id)
+        or _as_text(state.live_chat_id)
+        or _as_text(settings.get("youtube_live_chat_id"))
+    )
     if not chat_id:
-        broadcasts = await client.list_broadcasts(broadcast_status="active")
-        broadcast = _extract_live_broadcast(broadcasts or {})
-        chat_id = _extract_live_chat_id(broadcast)
-    if not chat_id:
-        raise Exception("No hay live chat activo para enviar el mensaje")
+        raise Exception(
+            "No hay live chat configurado para enviar el mensaje. "
+            "Primero inicia el servicio o guarda youtube_live_chat_id."
+        )
     return await client.send_chat_message(chat_id, message)
 
 
