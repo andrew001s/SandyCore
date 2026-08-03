@@ -9,6 +9,11 @@ from app.services.storage.supabase_store import get_user_settings, upsert_user_s
 SETTINGS_KEYS = {
     "twitch_channel",
     "kick_channel",
+    "youtube_channel_id",
+    "youtube_channel_title",
+    "youtube_broadcast_id",
+    "youtube_live_chat_id",
+    "youtube_bot_account",
     "gemini_api_key",
     "twitch_bot_account",
     "kick_bot_account",
@@ -62,6 +67,7 @@ def _defaults() -> dict[str, Any]:
         "gemini_api_key": os.getenv("GEMINI_API_KEY"),
         "twitch_bot_account": os.getenv("TWITCH_BOT_ACCOUNT"),
         "kick_bot_account": os.getenv("KICK_BOT_ACCOUNT"),
+        "youtube_bot_account": os.getenv("YOUTUBE_BOT_ACCOUNT"),
         "ai_provider": os.getenv("AI_PROVIDER", "gemini"),
         "openrouter_model": os.getenv(
             "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
@@ -74,6 +80,10 @@ def _defaults() -> dict[str, Any]:
         "fish_audio_key": os.getenv("FISH_AUDIO_KEY"),
         "voice_id": os.getenv("VOICE_ID"),
         "persona_profile": load_personality_template(),
+        "youtube_channel_id": None,
+        "youtube_channel_title": None,
+        "youtube_broadcast_id": None,
+        "youtube_live_chat_id": None,
         "prompt_overrides": {},
         "feature_flags": DEFAULT_FEATURE_FLAGS.copy(),
         "custom_banned_words": [],

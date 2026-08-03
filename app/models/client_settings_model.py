@@ -7,6 +7,7 @@ class ClientSettingsModel(BaseModel):
     twitch_channel: Optional[str] = None
     gemini_api_key: Optional[str] = None
     twitch_bot_account: Optional[str] = None
+    youtube_bot_account: Optional[str] = None
     ai_provider: Optional[str] = None
     openrouter_api_key: Optional[str] = None
     openrouter_model: Optional[str] = None
@@ -17,6 +18,10 @@ class ClientSettingsModel(BaseModel):
     language: Optional[str] = None
     fish_audio_key: Optional[str] = None
     voice_id: Optional[str] = None
+    youtube_channel_id: Optional[str] = None
+    youtube_channel_title: Optional[str] = None
+    youtube_broadcast_id: Optional[str] = None
+    youtube_live_chat_id: Optional[str] = None
     persona_profile: Optional[dict] = None
     prompt_overrides: Optional[dict] = None
     feature_flags: Optional[dict] = None

@@ -6,6 +6,7 @@ from app.config.cors import configure_cors
 from app.controllers.http.gemini_router import router as gemini_router
 from app.controllers.http.kick_router import router as kick_router
 from app.controllers.http.kick_webhook_router import router as kick_webhook_router
+from app.controllers.http.youtube_router import router as youtube_router
 from app.controllers.http.realtime_router import router as realtime_router
 from app.controllers.http.settings_router import router as settings_router
 from app.controllers.http.test_router import router as test_router
@@ -16,6 +17,7 @@ tags_metadata = [
     {"name": "Health", "description": "Verificación de estado de la API."},
     {"name": "Twitch", "description": "Autenticación, tokens y control de servicios de Twitch."},
     {"name": "Kick", "description": "Autenticación, tokens y control de servicios de Kick."},
+    {"name": "YouTube", "description": "Autenticación OAuth de Google, chat y control básico de transmisiones de YouTube."},
     {"name": "Settings", "description": "Configuración por usuario guardada en SQLite."},
     {"name": "AI", "description": "Consultas a la capa de IA."},
 ]
@@ -36,6 +38,7 @@ app.include_router(test_router)
 app.include_router(twitch_router)
 app.include_router(kick_router)
 app.include_router(kick_webhook_router)
+app.include_router(youtube_router)
 app.include_router(settings_router)
 app.include_router(gemini_router)
 app.include_router(realtime_router)
