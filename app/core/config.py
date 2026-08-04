@@ -33,6 +33,9 @@ class Config:
     KICK_VERIFY_WEBHOOKS = os.getenv("KICK_VERIFY_WEBHOOKS", "true").lower() == "true"
     CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "https://api.clerk.com/v1/jwks")
     CLERK_AUDIENCE = os.getenv("CLERK_AUDIENCE")
+    ROLLBAR_ACCESS_TOKEN = os.getenv("ROLLBAR_ACCESS_TOKEN")
+    ROLLBAR_ENVIRONMENT = os.getenv("ROLLBAR_ENVIRONMENT", "development")
+    ROLLBAR_CODE_VERSION = os.getenv("ROLLBAR_CODE_VERSION") or os.getenv("GIT_SHA") or "1.0.0"
     FRONTEND_ORIGINS = [
         origin.strip()
         for origin in os.getenv(

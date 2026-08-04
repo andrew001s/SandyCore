@@ -4,6 +4,7 @@ fastapi==0.115.11
 google-genai==1.21.0
 google-generativeai==0.8.4
 httpx==0.28.1
+rollbar>=0.16.0
 twitchapi==4.4.0
 twitchio==2.10.0
 uvicorn==0.34.0

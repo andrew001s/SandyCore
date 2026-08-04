@@ -3,6 +3,7 @@ from starlette.websockets import WebSocketState
 from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
+from app.core.rollbar import configure_rollbar
 from app.controllers.http.gemini_router import router as gemini_router
 from app.controllers.http.kick_router import router as kick_router
 from app.controllers.http.kick_webhook_router import router as kick_webhook_router
@@ -31,6 +32,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+configure_rollbar(app)
 configure_cors(app)
 
 
