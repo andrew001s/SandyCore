@@ -87,7 +87,13 @@ jobs:
 
       - name: Push commit and tag
         if: steps.bump.outputs.bumped == 'true'
-        run: git push --follow-tags origin HEAD:main
+        # El tag se empuja por nombre explícito: `--follow-tags` solo propaga
+        # tags anotados y se quedaba callado si no lo eran. `--atomic` evita
+        # que el commit del bump quede publicado sin su tag.
+        run: |
+          git push --atomic origin \
+            HEAD:main \
+            "refs/tags/v${{ steps.bump.outputs.version }}"
 
       - name: Summary
         if: steps.bump.outputs.bumped == 'true'

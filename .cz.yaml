@@ -1,5 +1,8 @@
 ---
 commitizen:
+  # Los tags de release deben ser anotados: llevan autor y fecha, y son los
+  # únicos que `git push --follow-tags` propaga.
+  annotated_tag: true
   changelog_file: changelog.md
   name: cz_conventional_commits
   tag_format: v$version
