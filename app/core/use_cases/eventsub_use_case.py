@@ -16,6 +16,7 @@ class EventSubUseCase:
         message: str,
         response: str,
         *,
+        user_id: str,
         voice_enabled: bool = True,
     ) -> None:
         if event_kind == "speech":
@@ -32,10 +33,12 @@ class EventSubUseCase:
                 scene="chat" if event_kind == "speech" else "reaction",
                 metadata={
                     "source": "eventsub",
+                    "user_id": user_id,
                     "eventKind": event_kind,
                     "message": message,
                     "response": response,
                     "voice_enabled": voice_enabled,
                 },
-            )
+            ),
+            user_id,
         )

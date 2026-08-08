@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, WebSocket
+from fastapi import Depends, FastAPI, Query, WebSocket
 from starlette.websockets import WebSocketState
 from fastapi.responses import JSONResponse
 
@@ -27,7 +27,7 @@ tags_metadata = [
 app = FastAPI(
     title="Sandy Core IA API",
     description="API para autenticación con Clerk, persistencia en SQLite y control de Twitch/IA.",
-    version="1.0.0",
+    version="1.3.10",
     openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -48,9 +48,9 @@ app.include_router(realtime_router)
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(default=None)):
     try:
-        await handle_websocket(websocket)
+        await handle_websocket(websocket, token)
     except Exception as e:
         print(f"WebSocket error: {e}")
         if websocket.client_state != WebSocketState.DISCONNECTED:

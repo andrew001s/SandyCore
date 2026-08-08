@@ -188,7 +188,8 @@ async def _broadcast_system_notification(user_id: str, message: str, metadata: d
                 "user_id": user_id,
                 **metadata,
             },
-        )
+        ),
+        user_id,
     )
 
 
@@ -437,7 +438,7 @@ async def _handle_chat_message(
             "speech",
             full_message,
             response,
-            voice_enabled=True,
+            user_id=user_id, voice_enabled=True,
         )
         return
 
@@ -449,7 +450,7 @@ async def _handle_chat_message(
             "reaction",
             full_message,
             response,
-            voice_enabled=False,
+            user_id=user_id, voice_enabled=False,
         )
         return
 
@@ -461,7 +462,7 @@ async def _handle_chat_message(
             "reaction",
             full_message,
             response,
-            voice_enabled=False,
+            user_id=user_id, voice_enabled=False,
         )
         return
 

@@ -82,7 +82,7 @@ class TwitchChatSession:
         if not self.target_channel:
             raise Exception("No hay canal configurado para unir el chat")
         await ready_event.chat.join_room(self.target_channel)
-        await chat_use_case.notify_chat_connected(self.target_channel)
+        await chat_use_case.notify_chat_connected(self.target_channel, self.user_id)
 
     async def _broadcaster_id(self):
         broadcaster = auth.get_broadcaster(self.user_id, bot=False)
@@ -101,6 +101,7 @@ class TwitchChatSession:
             msg.user.name,
             msg.text,
             response,
+            user_id=self.user_id,
             voice_enabled=voice_enabled,
         )
 

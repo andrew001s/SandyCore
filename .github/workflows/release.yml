@@ -7,11 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Semver bump to apply
-        required: true
-        default: patch
+        description: >
+          Bump a aplicar. Con "auto" se deriva de los mensajes de commit
+          (BREAKING CHANGE o "!" -> major, feat -> minor, fix -> patch).
+        required: false
+        default: auto
         type: choice
         options:
+          - auto
           - patch
           - minor
           - major
@@ -21,9 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: >
-      github.actor != 'github-actions[bot]' &&
-      (github.event_name != 'push' || github.event.head_commit.message != 'docs(changelog): update changelog')
+    if: github.actor != 'github-actions[bot]'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,47 +34,62 @@ jobs:
       - name: Fetch tags
         run: git fetch --tags --force
 
-      - name: Compute next version
-        id: version
-        shell: bash
-        run: |
-          latest_tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
-          if [ -z "$latest_tag" ]; then
-            latest_tag="v0.0.0"
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-          version="${latest_tag#v}"
-          IFS='.' read -r major minor patch <<< "$version"
+      - name: Install Commitizen
+        run: pip install commitizen
 
-          bump_type="${{ github.event_name == 'workflow_dispatch' && inputs.bump || 'patch' }}"
-
-          case "$bump_type" in
-            major)
-              major=$((major + 1))
-              minor=0
-              patch=0
-              ;;
-            minor)
-              minor=$((minor + 1))
-              patch=0
-              ;;
-            patch)
-              patch=$((patch + 1))
-              ;;
-            *)
-              echo "Unsupported bump type: $bump_type"
-              exit 1
-              ;;
-          esac
-
-          next_tag="v${major}.${minor}.${patch}"
-          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
-          echo "next_tag=$next_tag" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        shell: bash
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.next_tag }}" -m "Release ${{ steps.version.outputs.next_tag }}"
-          git push origin "${{ steps.version.outputs.next_tag }}"
+
+      - name: Bump version
+        id: bump
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          bump_input="${{ inputs.bump || 'auto' }}"
+          args=(bump --yes)
+          if [ "$bump_input" != "auto" ]; then
+            args+=(--increment "$(echo "$bump_input" | tr '[:lower:]' '[:upper:]')")
+          fi
+
+          # `shell: bash` activa -e por defecto; hay que desactivarlo para poder
+          # inspeccionar el código de salida de cz en vez de abortar el step.
+          set +e
+          # cz bump deriva el incremento de los commits convencionales,
+          # actualiza .cz.yaml y app/main.py (version_files), escribe el
+          # changelog y crea el tag.
+          cz "${args[@]}"
+          status=$?
+          set -e
+
+          # 21 = NO_COMMITS_TO_BUMP: solo hubo docs/chore/style desde el último
+          # release. No es un fallo, simplemente no hay nada que publicar.
+          if [ "$status" -eq 21 ]; then
+            echo "Sin commits que ameriten un release; no se crea tag."
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            echo "cz bump falló con código $status"
+            exit "$status"
+          fi
+
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "version=$(cz version --project)" >> "$GITHUB_OUTPUT"
+
+      - name: Push commit and tag
+        if: steps.bump.outputs.bumped == 'true'
+        run: git push --follow-tags origin HEAD:main
+
+      - name: Summary
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          echo "Publicado v${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
