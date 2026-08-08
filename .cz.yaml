@@ -1,13 +1,11 @@
 ---
 commitizen:
-  # Los tags de release deben ser anotados: llevan autor y fecha, y son los
-  # únicos que `git push --follow-tags` propaga.
   annotated_tag: true
   changelog_file: changelog.md
   name: cz_conventional_commits
   tag_format: v$version
   update_changelog_on_bump: true
-  version: 2.0.0
+  version: 2.0.1
   version_files:
   - app/main.py:version
   version_scheme: semver

@@ -1,3 +1,9 @@
+## v2.0.1 (2026-08-08)
+
+### Fix
+
+- **ci**: publicar el tag de release en vez de perderlo en el runner
+
 ## v2.0.0 (2026-08-08)
 
 ### BREAKING CHANGE
