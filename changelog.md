@@ -1,3 +1,36 @@
+## v2.0.0 (2026-08-08)
+
+### BREAKING CHANGE
+
+- /ws ahora exige el parámetro `token` con un token de
+/stream/token; sin él la conexión se cierra con el código 1008. Un cliente
+conectado deja de recibir los eventos de otras cuentas. El frontend debe pedir
+el token dentro de la función de reconexión, no al montar: el token dura 300s
+y solo se valida al abrir la conexión, así que una conexión establecida no se
+cae al expirar, pero reconectar con un token viejo falla.
+
+### Feat
+
+- **realtime**: particionar el bus de eventos por usuario y autenticar /ws
+
+## v1.3.10 (2026-08-08)
+
+## v1.3.9 (2026-08-04)
+
+## v1.3.8 (2026-08-03)
+
+## v1.3.7 (2026-08-02)
+
+## v1.3.6 (2026-08-02)
+
+## v1.3.5 (2026-08-02)
+
+## v1.3.4 (2026-08-02)
+
+## v1.3.3 (2026-08-02)
+
+## v1.3.2 (2026-08-01)
+
 ## v1.3.1 (2026-08-01)
 
 ### Feat
