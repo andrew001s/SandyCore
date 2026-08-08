@@ -87,31 +87,31 @@ class EventSubSession:
         message = f"Redemption: {redemtion} from {user}"
         redemtion_obj = '{"user": "' + user + '", "reward": "' + redemtion + '"}'
         response = await response_gemini_rewards(redemtion_obj, self.user_id)
-        await eventsubUseCase.handle_events("reaction", message, response)
+        await eventsubUseCase.handle_events("reaction", message, response, user_id=self.user_id)
 
     async def on_follow(self, data: eventsub.ChannelFollowEvent):
         user = data.event.user_name
         message = f"Follow nombre_usuario: {user}"
         response = await response_gemini_events(f"{message}", self.user_id)
-        await eventsubUseCase.handle_events("reaction", message, response)
+        await eventsubUseCase.handle_events("reaction", message, response, user_id=self.user_id)
 
     async def on_subscribe(self, data: eventsub.ChannelSubscribeEvent):
         user = data.event.user_name
         sub = f"Subscribe user: {user}"
         response = await response_gemini_events(f"{sub}", self.user_id)
-        await eventsubUseCase.handle_events("reaction", sub, response)
+        await eventsubUseCase.handle_events("reaction", sub, response, user_id=self.user_id)
 
     async def on_subscribe_message(self, data: eventsub.ChannelSubscriptionMessageEvent):
         user = data.event.user_name
         sub = f"Suscribe user: {user} message: {data.event.message}"
         response = await response_gemini_events(f"{sub}", self.user_id)
-        await eventsubUseCase.handle_events("speech", sub, response)
+        await eventsubUseCase.handle_events("speech", sub, response, user_id=self.user_id)
 
     async def on_sub_gift(self, data: eventsub.ChannelSubscriptionGiftEvent):
         user = data.event.user_name
         gift = f"gift_Sub user: {user}"
         response = await response_gemini_events(f"{gift}", self.user_id)
-        await eventsubUseCase.handle_events("reaction", gift, response)
+        await eventsubUseCase.handle_events("reaction", gift, response, user_id=self.user_id)
 
     async def on_cheer(self, data: eventsub.ChannelCheerEvent):
         user = data.event.user_name
@@ -119,13 +119,13 @@ class EventSubSession:
         cheer_amount = data.event.bits
         cheer = f"cheer user: {user} bits_amount: {cheer_amount} message: {cheer}"
         response = await response_gemini_events(f"{cheer}", self.user_id)
-        await eventsubUseCase.handle_events("reaction", cheer, response)
+        await eventsubUseCase.handle_events("reaction", cheer, response, user_id=self.user_id)
 
     async def on_raid(self, data: eventsub.ChannelRaidEvent):
         user = data.event.from_broadcaster_user_name
         raid = f"Raid: user que raideo: {user}"
         response = await response_gemini_events(f"{raid}", self.user_id)
-        await eventsubUseCase.handle_events("reaction", raid, response)
+        await eventsubUseCase.handle_events("reaction", raid, response, user_id=self.user_id)
 
 
 # Una sesión de EventSub por usuario. Nunca una instancia global compartida.

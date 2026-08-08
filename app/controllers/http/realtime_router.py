@@ -61,7 +61,7 @@ async def stream_events(request: Request, token: str = Query(...)):
                 except asyncio.TimeoutError:
                     yield ": ping\n\n"
         finally:
-            await manager.disconnect_stream(queue)
+            await manager.disconnect_stream(queue, user_id)
 
     return StreamingResponse(
         event_generator(),

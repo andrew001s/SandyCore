@@ -168,7 +168,8 @@ async def _broadcast_system_notification(user_id: str, message: str, metadata: d
                 "user_id": user_id,
                 **metadata,
             },
-        )
+        ),
+        user_id,
     )
 
 
@@ -183,32 +184,32 @@ async def _handle_non_chat_event(
     if event_type == "channel.followed":
         message = f"Kick follow: {actor or 'usuario desconocido'}"
         response = await response_gemini_events(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "channel.subscription.new":
         message = f"Kick new subscriber: {actor or 'usuario desconocido'}"
         response = await response_gemini_events(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "channel.subscription.renewal":
         message = f"Kick resub: {actor or 'usuario desconocido'}"
         response = await response_gemini_events(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "channel.subscription.gifts":
         message = f"Kick gifted subs: {actor or 'usuario desconocido'}"
         response = await response_gemini_events(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "channel.reward.redemption.updated":
         reward_title = _extract_reward_title(event_payload)
         message = f"Kick reward redemption: {reward_title or 'recompensa'} by {actor or 'usuario desconocido'}"
         response = await response_gemini_rewards(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "kicks.gifted":
@@ -216,7 +217,7 @@ async def _handle_non_chat_event(
         gift_name = _extract_first_string(event_payload, ("name", "type", "label", "title"))
         message = f"Kick gifted: {amount or '0'} {gift_name or 'kicks'} by {actor or 'usuario desconocido'}"
         response = await response_gemini_rewards(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "moderation.banned":
@@ -225,7 +226,7 @@ async def _handle_non_chat_event(
         if reason:
             message = f"{message} reason: {reason}"
         response = await response_gemini_events(message, user_id)
-        await event_use_case.handle_events("reaction", message, response, voice_enabled=False)
+        await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "livestream.status.updated":
@@ -470,7 +471,7 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
         "speech",
         full_message,
         response,
-        voice_enabled=True,
+        user_id=user_id, voice_enabled=True,
     )
     _log_webhook(
         "speech_dispatched",
