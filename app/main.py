@@ -1,8 +1,9 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import Depends, FastAPI, WebSocket
 from starlette.websockets import WebSocketState
 from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
+from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.rollbar import configure_rollbar
 from app.controllers.http.gemini_router import router as gemini_router
 from app.controllers.http.kick_router import router as kick_router
@@ -56,12 +57,15 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
 
 
-@app.get("/get-profile")
-async def get_profile(bot: bool = False):
+@app.get("/get-profile", deprecated=True)
+async def get_profile(
+    bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """Obsoleto: usa /profile. Se mantiene solo por compatibilidad."""
     try:
-        from app.services.twitch.twitch import get_user_profile
+        from app.adapters.twitch_services import TwitchService
 
-        profile = await get_user_profile(bot)
+        profile = await TwitchService().get_profile(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"profile": profile})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

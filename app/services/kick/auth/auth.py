@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -50,18 +51,92 @@ KICK_WEBHOOK_EVENTS = [
     {"name": "moderation.banned", "version": 1},
 ]
 
-kick = None
-user = None
-kick_bot = None
-user_bot = None
 _kick_public_key_pem: str | None = None
+
+
+@dataclass
+class KickSession:
+    """Cliente de Kick autenticado, siempre atado a un usuario concreto."""
+
+    user_id: str
+    bot: bool
+    client: "KickAPIClient"
+    profile: dict | None = None
+
+
+# Registro de sesiones por (user_id, bot). Nunca uses un cliente global:
+# el proceso atiende a varios usuarios y compartir la instancia hace que
+# un cliente reciba el perfil y los datos de otro.
+_sessions: dict[tuple[str, bool], KickSession] = {}
+_session_locks: dict[tuple[str, bool], asyncio.Lock] = {}
 
 
 def _resolve_user_id(user_id: str | None = None) -> str:
     owner_id = user_id or get_active_user_id()
     if not owner_id:
         raise Exception("No hay un usuario activo asociado a la configuración")
-    return owner_id
+    return str(owner_id)
+
+
+def _session_key(owner_id: str, bot: bool) -> tuple[str, bool]:
+    return (str(owner_id), bool(bot))
+
+
+def _missing_session_message(bot: bool) -> str:
+    if bot:
+        return "No existe una sesión de bot autenticada para este usuario"
+    return "No existe una sesión de Kick autenticada para este usuario"
+
+
+def _lock_for(key: tuple[str, bool]) -> asyncio.Lock:
+    lock = _session_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _session_locks[key] = lock
+    return lock
+
+
+def _store_session(owner_id: str, bot: bool, client: "KickAPIClient") -> KickSession:
+    key = _session_key(owner_id, bot)
+    session = KickSession(user_id=str(owner_id), bot=bool(bot), client=client)
+    _sessions[key] = session
+    return session
+
+
+async def _get_or_create_session(owner_id: str, bot: bool = False) -> KickSession:
+    key = _session_key(owner_id, bot)
+    session = _sessions.get(key)
+    if session is not None:
+        return session
+
+    async with _lock_for(key):
+        session = _sessions.get(key)
+        if session is not None:
+            return session
+
+        tokens = await get_tokens(owner_id, bot)
+        if not tokens:
+            raise Exception(_missing_session_message(bot))
+        client = await authenticate_kick(
+            owner_id, tokens["token"], tokens["refresh_token"], bot
+        )
+        return _store_session(owner_id, bot, client)
+
+
+def get_session(user_id: str | None = None, bot: bool = False) -> KickSession | None:
+    """Sesión ya autenticada de este usuario, o None si no hay ninguna en memoria."""
+    owner_id = _resolve_user_id(user_id)
+    return _sessions.get(_session_key(owner_id, bot))
+
+
+def get_client(user_id: str | None = None, bot: bool = False):
+    session = get_session(user_id, bot)
+    return session.client if session else None
+
+
+def get_broadcaster(user_id: str | None = None, bot: bool = False):
+    session = get_session(user_id, bot)
+    return session.profile if session else None
 
 
 def generate_pkce_pair() -> tuple[str, str]:
@@ -125,6 +200,7 @@ class KickAPIClient:
     user_id: str
     access_token: str
     refresh_token: str | None = None
+    bot: bool = False
 
     @property
     def api_base_url(self) -> str:
@@ -147,7 +223,7 @@ class KickAPIClient:
         self.access_token = new_tokens["access_token"]
         self.refresh_token = new_tokens["refresh_token"]
         await save_kick_tokens(
-            self.user_id, self.access_token, self.refresh_token, False
+            self.user_id, self.access_token, self.refresh_token, self.bot
         )
 
     async def request_json(
@@ -382,7 +458,10 @@ async def get_tokens(user_id: str | None = None, bot: bool = False):
 
 
 async def authenticate_kick(
-    user_id: str | None = None, token: str = None, refresh_token: str = None
+    user_id: str | None = None,
+    token: str = None,
+    refresh_token: str = None,
+    bot: bool = False,
 ):
     owner_id = _resolve_user_id(user_id)
     client_id = config.KICK_CLIENT_ID
@@ -393,7 +472,7 @@ async def authenticate_kick(
         )
 
     if token is None or refresh_token is None:
-        tokens = await get_tokens(owner_id)
+        tokens = await get_tokens(owner_id, bot)
         if tokens:
             token = tokens["token"]
             refresh_token = tokens["refresh_token"]
@@ -401,7 +480,7 @@ async def authenticate_kick(
     if token is None or refresh_token is None:
         raise Exception("No existen tokens de Kick guardados para este usuario")
 
-    return KickAPIClient(owner_id, token, refresh_token)
+    return KickAPIClient(owner_id, token, refresh_token, bot)
 
 
 def _extract_subscription_id(response: object) -> str | None:
@@ -486,32 +565,10 @@ async def _ensure_kick_channel(user_id: str, profile: dict) -> None:
 
 
 async def get_profile_users(bot: bool = False, user_id: str | None = None):
-    global kick
-    global kick_bot
-    global user_bot
-    global user
     owner_id = _resolve_user_id(user_id)
-    if bot:
-        if kick_bot is None:
-            tokens = await get_tokens(owner_id, True)
-            if not tokens:
-                raise Exception("No existe una sesión de bot autenticada para este usuario")
-            kick_bot = await authenticate_kick(
-                owner_id, tokens["token"], tokens["refresh_token"]
-            )
-        profile = _extract_profile(await kick_bot.get_users())
-        user_bot = profile
-        await _ensure_kick_channel(owner_id, profile)
-        return profile
-
-    if kick is None:
-        tokens = await get_tokens(owner_id, False)
-        if not tokens:
-            raise Exception("No existe una sesión de Kick autenticada para este usuario")
-        kick = await authenticate_kick(owner_id, tokens["token"], tokens["refresh_token"])
-
-    profile = _extract_profile(await kick.get_users())
-    user = profile
+    session = await _get_or_create_session(owner_id, bot)
+    profile = _extract_profile(await session.client.get_users())
+    session.profile = profile
     await _ensure_kick_channel(owner_id, profile)
     return profile
 
@@ -522,11 +579,6 @@ async def create_kick_instance(
     token: str = None,
     refresh_token: str = None,
 ):
-    global kick
-    global user
-    global user_bot
-    global kick_bot
-
     owner_id = _resolve_user_id(user_id)
     set_active_user_id(owner_id)
 
@@ -542,37 +594,54 @@ async def create_kick_instance(
     await save_tokens(owner_id, token, refresh_token, bot)
 
     try:
+        client = await authenticate_kick(owner_id, token, refresh_token, bot)
+        await _close_session(owner_id, bot)
+        _store_session(owner_id, bot, client)
+
+        profile = await get_profile_users(bot=bot, user_id=owner_id)
+
+        broadcaster_session = _sessions.get(_session_key(owner_id, False))
+        broadcaster_client = broadcaster_session.client if broadcaster_session else None
         if bot:
-            kick_bot = await authenticate_kick(owner_id, token, refresh_token)
-            profile = await get_profile_users(bot=True)
-            return kick, kick_bot, profile.get("id")
-        kick = await authenticate_kick(owner_id, token, refresh_token)
-        profile = await get_profile_users(bot=False)
-        return kick, kick, profile.get("id")
+            return broadcaster_client, client, profile.get("id")
+        return client, client, profile.get("id")
     except Exception as e:
         raise Exception(f"Error al crear la instancia de Kick: {str(e)}")
 
 
-async def return_kick_instance(bot: bool = False):
-    global kick
-    global kick_bot
-    global user
-    global user_bot
+async def return_kick_instance(bot: bool = False, user_id: str | None = None):
+    owner_id = _resolve_user_id(user_id)
+    broadcaster_session = await _get_or_create_session(owner_id, False)
+    if broadcaster_session.profile is None:
+        await get_profile_users(bot=False, user_id=owner_id)
+
+    profile = broadcaster_session.profile
+    broadcaster_id = profile.get("id") if isinstance(profile, dict) else None
+
     if bot:
-        return kick, kick_bot, (user.get("id") if isinstance(user, dict) else None)
-    return kick, kick, (user.get("id") if isinstance(user, dict) else None)
+        bot_session = await _get_or_create_session(owner_id, True)
+        return broadcaster_session.client, bot_session.client, broadcaster_id
+    return broadcaster_session.client, broadcaster_session.client, broadcaster_id
 
 
-async def close_kick():
-    global kick
-    global kick_bot
-    global user
-    global user_bot
-    if kick:
-        await kick.close()
-    if kick_bot:
-        await kick_bot.close()
-    kick = None
-    kick_bot = None
-    user = None
-    user_bot = None
+async def _close_session(owner_id: str, bot: bool) -> None:
+    session = _sessions.pop(_session_key(owner_id, bot), None)
+    if session is None:
+        return
+    try:
+        await session.client.close()
+    except Exception as exc:
+        print(f"[KICK AUTH] Error al cerrar la sesión de {owner_id}: {repr(exc)}")
+
+
+async def close_kick(user_id: str | None = None):
+    """Cierra únicamente las sesiones del usuario indicado."""
+    owner_id = _resolve_user_id(user_id)
+    for bot in (False, True):
+        await _close_session(owner_id, bot)
+
+
+async def close_all_kick_sessions():
+    """Solo para el apagado del proceso."""
+    for key in list(_sessions.keys()):
+        await _close_session(key[0], key[1])

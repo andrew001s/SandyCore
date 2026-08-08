@@ -16,8 +16,15 @@ class Order(BaseModel):
     order_objective: str | None = None
 
 
-history_chat: deque[str] = deque(maxlen=10)
+# Historial de conversación por usuario. Con un solo deque global, el contexto
+# de un streamer terminaba dentro del prompt de otro.
+HISTORY_MAX_LEN = 10
+_history_by_user: dict[str, deque[str]] = {}
 _ai_client_cache: dict[tuple[str, str, str], AIPort] = {}
+
+
+def _history_key(user_id: str | None = None) -> str:
+    return str(user_id or get_active_user_id() or "__sin_usuario__")
 
 
 def _normalize_label(value: str | None) -> str:
@@ -61,7 +68,7 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
 
 async def client_gemini(message: str, prompt: str, user_id: str | None = None) -> str:
     client = await _get_ai_client(user_id)
-    context = generate_context()
+    context = generate_context(user_id)
     full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
     return await client.generate_text(message, full_prompt)
 
@@ -74,20 +81,29 @@ async def client_gemini_order(
     return result
 
 
-def add_to_history(message: str):
-    history_chat.append(message)
+def add_to_history(message: str, user_id: str | None = None):
+    key = _history_key(user_id)
+    history = _history_by_user.get(key)
+    if history is None:
+        history = deque(maxlen=HISTORY_MAX_LEN)
+        _history_by_user[key] = history
+    history.append(message)
 
 
-def generate_context() -> str:
-    return "\n".join(history_chat)
+def generate_context(user_id: str | None = None) -> str:
+    return "\n".join(_history_by_user.get(_history_key(user_id), ()))
+
+
+def clear_history(user_id: str | None = None) -> None:
+    _history_by_user.pop(_history_key(user_id), None)
 
 
 async def response_sandy(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    add_to_history("user:" + message)
+    add_to_history("user:" + message, user_id)
     response = await client_gemini(message, prompts["vtuber"], user_id)
-    add_to_history(response)
+    add_to_history(response, user_id)
     await register_activity_and_monitor(user_id)
     return response
 
@@ -107,29 +123,31 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
 
     if response_type == "orden":
         await moderator_actions(
-            title=response_assist.order_objective, name=response_assist.order_name
+            title=response_assist.order_objective,
+            name=response_assist.order_name,
+            user_id=user_id,
         )
         response = await client_gemini(message, prompts["vtuber"], user_id)
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "statistics":
-        stadistics = await get_stream_info()
+        stadistics = await get_stream_info(user_id)
         response = await client_gemini(str(stadistics), prompts["statistics"], user_id)
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "interaccion":
-        add_to_history("shandrew:" + message)
+        add_to_history("shandrew:" + message, user_id)
         response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-        add_to_history("bot:" + response)
+        add_to_history("bot:" + response, user_id)
         await register_activity_and_monitor(user_id)
         return response
 
     print(
         f"[GEMINI] response_assist.type inesperado: {getattr(response_assist, 'type', None)!r}"
     )
-    add_to_history("shandrew:" + message)
+    add_to_history("shandrew:" + message, user_id)
     response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-    add_to_history("bot:" + response)
+    add_to_history("bot:" + response, user_id)
     await register_activity_and_monitor(user_id)
     return response
 

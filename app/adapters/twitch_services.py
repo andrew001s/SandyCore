@@ -33,46 +33,46 @@ class TwitchService:
         except Exception as e:
             raise Exception(f"Error al mapear el perfil: {str(e)}")
 
-    async def return_instance(self, bot: bool = False):
+    async def return_instance(self, bot: bool = False, user_id: str | None = None):
         from app.services.twitch.twitch import auth
 
-        return await auth.return_twitch_instance(bot)
+        return await auth.return_twitch_instance(bot, user_id)
 
     async def setup_chat(self, twitch_obj, twitch_bot=None, user_id: str | None = None):
         from app.services.twitch.twitch import setup_chat_instance as setup_chat
 
         await setup_chat(twitch_obj, twitch_bot, user_id)
 
-    async def close_chat(self):
+    async def close_chat(self, user_id: str | None = None):
         from app.services.twitch.twitch import close_chat_instance as close_chat
 
-        await close_chat()
+        await close_chat(user_id)
 
-    async def setup_eventsub(self, twitch, user_id):
+    async def setup_eventsub(self, twitch, user_id, broadcaster_id=None):
         try:
             import twitchAPI.type as type
             from app.services.twitch.twitch import (
                 setup_eventsub_instance as setup_eventsub,
             )
 
-            await setup_eventsub(twitch, user_id)
+            await setup_eventsub(twitch, user_id, broadcaster_id)
         except type.EventSubSubscriptionError as e:
             raise EventSubError(str(e))
 
-    async def close_twitch(self):
+    async def close_twitch(self, user_id: str | None = None):
         from app.services.twitch.twitch import close_twitch as close_twitch_service
 
-        await close_twitch_service()
+        await close_twitch_service(user_id)
 
-    async def logout_twitch(self):
+    async def logout_twitch(self, user_id: str | None = None):
         from app.services.twitch.twitch import logout_twitch as logout_twitch_service
 
-        await logout_twitch_service()
+        await logout_twitch_service(user_id)
 
-    async def close_eventsub(self):
+    async def close_eventsub(self, user_id: str | None = None):
         from app.services.twitch.twitch import close_eventsub
 
-        await close_eventsub()
+        await close_eventsub(user_id)
 
     async def get_tokens(self, user_id: str | None = None, bot: bool = False):
         from app.services.twitch.twitch import auth

@@ -61,12 +61,14 @@ async def disarm(user_id: str | None = None) -> None:
 async def _stream_is_live(user_id: str | None = None) -> bool:
     from app.services.kick.auth import auth
 
-    kick_client = auth.kick
-    broadcaster = getattr(auth, "user", None)
-    if kick_client is None or not broadcaster:
+    resolved = _key(user_id)
+    session = auth.get_session(resolved, bot=False)
+    if session is None:
         return False
 
-    broadcaster_id = broadcaster.get("id") if isinstance(broadcaster, dict) else None
+    kick_client = session.client
+    profile = session.profile
+    broadcaster_id = profile.get("id") if isinstance(profile, dict) else None
     if not broadcaster_id:
         return False
 
@@ -80,7 +82,7 @@ async def start_services(user_id: str | None = None) -> None:
     from app.services.kick.auth import auth
 
     resolved = _key(user_id)
-    if auth.kick is None:
+    if auth.get_session(resolved, bot=False) is None:
         raise RuntimeError("No hay instancia de Kick autenticada para iniciar servicios")
 
     state = await _get_state(resolved)

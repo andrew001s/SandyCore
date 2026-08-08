@@ -61,14 +61,13 @@ async def disarm(user_id: str | None = None) -> None:
 async def _stream_is_live(user_id: str | None = None) -> bool:
     from app.services.twitch.twitch import auth
 
-    twitch_client = auth.twitch
-    broadcaster = getattr(auth, "user", None)
-    if twitch_client is None:
-        return False
-    if broadcaster is None:
+    resolved = _key(user_id)
+    session = auth.get_session(resolved, bot=False)
+    if session is None:
         return False
 
-    broadcaster_id = getattr(broadcaster, "id", None)
+    twitch_client = session.client
+    broadcaster_id = getattr(session.profile, "id", None)
     if not broadcaster_id:
         return False
 
@@ -83,23 +82,25 @@ async def start_services(user_id: str | None = None) -> None:
     from app.services.twitch.twitch import auth
 
     resolved = _key(user_id)
-    twitch_client = auth.twitch
-    broadcaster = getattr(auth, "user", None)
-    if twitch_client is None:
+    session = auth.get_session(resolved, bot=False)
+    if session is None:
         raise RuntimeError("No hay instancia de Twitch autenticada para iniciar servicios")
 
-    broadcaster_id = getattr(broadcaster, "id", None) if broadcaster is not None else None
+    twitch_client = session.client
+    if session.profile is None:
+        await auth.get_profile_users(bot=False, user_id=resolved)
+    broadcaster_id = getattr(session.profile, "id", None)
     if not broadcaster_id:
         raise RuntimeError("No se pudo resolver el broadcaster para iniciar servicios")
 
     try:
         await setup_chat_instance(twitch_client, user_id=resolved)
-        await setup_eventsub_instance(twitch_client, broadcaster_id)
+        await setup_eventsub_instance(twitch_client, resolved, broadcaster_id)
     except Exception:
         from app.services.twitch.twitch import close_chat_instance, close_eventsub
 
-        await close_chat_instance()
-        await close_eventsub()
+        await close_chat_instance(resolved)
+        await close_eventsub(resolved)
         raise
 
     state = await _get_state(resolved)
@@ -112,8 +113,8 @@ async def stop_services(user_id: str | None = None) -> None:
 
     resolved = _key(user_id)
     print(f"[TWITCH LIFECYCLE] Deteniendo chat y EventSub para {resolved}")
-    await close_chat_instance()
-    await close_eventsub()
+    await close_chat_instance(resolved)
+    await close_eventsub(resolved)
     state = await _get_state(resolved)
     state.running = False
 

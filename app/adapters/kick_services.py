@@ -44,20 +44,20 @@ class KickService:
         except Exception as e:
             raise Exception(f"Error al mapear el perfil: {str(e)}")
 
-    async def return_instance(self, bot: bool = False):
+    async def return_instance(self, bot: bool = False, user_id: str | None = None):
         from app.services.kick.auth import auth
 
-        return await auth.return_kick_instance(bot)
+        return await auth.return_kick_instance(bot, user_id)
 
-    async def close_kick(self):
+    async def close_kick(self, user_id: str | None = None):
         from app.services.kick.kick import close_kick as close_kick_service
 
-        await close_kick_service()
+        await close_kick_service(user_id)
 
-    async def logout_kick(self):
+    async def logout_kick(self, user_id: str | None = None):
         from app.services.kick.kick import logout_kick as logout_kick_service
 
-        await logout_kick_service()
+        await logout_kick_service(user_id)
 
     async def get_tokens(self, user_id: str | None = None, bot: bool = False):
         from app.services.kick.auth import auth

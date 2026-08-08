@@ -1,5 +1,8 @@
-import aiohttp
+import asyncio
 import traceback
+from dataclasses import dataclass
+
+import aiohttp
 from twitchAPI.helper import first
 from twitchAPI.twitch import Twitch
 from twitchAPI.type import AuthScope, UnauthorizedException
@@ -32,17 +35,89 @@ USER_SCOPE = [
     AuthScope.BITS_READ,
 ]
 
-twitch = None
-user = None
-twitch_bot = None
-user_bot = None
+@dataclass
+class TwitchSession:
+    """Cliente de Twitch autenticado, siempre atado a un usuario concreto."""
+
+    user_id: str
+    bot: bool
+    client: Twitch
+    profile: object | None = None
+
+
+# Registro de sesiones por (user_id, bot). Nunca uses un cliente global:
+# el proceso atiende a varios usuarios y compartir la instancia hace que
+# un cliente reciba el perfil y los datos de otro.
+_sessions: dict[tuple[str, bool], TwitchSession] = {}
+_session_locks: dict[tuple[str, bool], asyncio.Lock] = {}
 
 
 def _resolve_user_id(user_id: str | None = None) -> str:
     owner_id = user_id or get_active_user_id()
     if not owner_id:
         raise Exception("No hay un usuario activo asociado a la configuración")
-    return owner_id
+    return str(owner_id)
+
+
+def _session_key(owner_id: str, bot: bool) -> tuple[str, bool]:
+    return (str(owner_id), bool(bot))
+
+
+def _missing_session_message(bot: bool) -> str:
+    if bot:
+        return "No existe una sesión de bot autenticada para este usuario"
+    return "No existe una sesión de Twitch autenticada para este usuario"
+
+
+def _lock_for(key: tuple[str, bool]) -> asyncio.Lock:
+    lock = _session_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _session_locks[key] = lock
+    return lock
+
+
+def _store_session(owner_id: str, bot: bool, client: Twitch) -> TwitchSession:
+    key = _session_key(owner_id, bot)
+    session = TwitchSession(user_id=str(owner_id), bot=bool(bot), client=client)
+    _sessions[key] = session
+    return session
+
+
+async def _get_or_create_session(owner_id: str, bot: bool = False) -> TwitchSession:
+    key = _session_key(owner_id, bot)
+    session = _sessions.get(key)
+    if session is not None:
+        return session
+
+    async with _lock_for(key):
+        session = _sessions.get(key)
+        if session is not None:
+            return session
+
+        tokens = await get_tokens(owner_id, bot)
+        if not tokens:
+            raise Exception(_missing_session_message(bot))
+        client = await authenticate_twitch(
+            owner_id, tokens["token"], tokens["refresh_token"], bot
+        )
+        return _store_session(owner_id, bot, client)
+
+
+def get_session(user_id: str | None = None, bot: bool = False) -> TwitchSession | None:
+    """Sesión ya autenticada de este usuario, o None si no hay ninguna en memoria."""
+    owner_id = _resolve_user_id(user_id)
+    return _sessions.get(_session_key(owner_id, bot))
+
+
+def get_client(user_id: str | None = None, bot: bool = False):
+    session = get_session(user_id, bot)
+    return session.client if session else None
+
+
+def get_broadcaster(user_id: str | None = None, bot: bool = False):
+    session = get_session(user_id, bot)
+    return session.profile if session else None
 
 
 async def refresh_access_token(user_id: str, refresh_token: str):
@@ -93,11 +168,6 @@ async def create_twitch_instance(
     token: str = None,
     refresh_token: str = None,
 ):
-    global twitch
-    global user
-    global user_bot
-    global twitch_bot
-
     owner_id = _resolve_user_id(user_id)
     set_active_user_id(owner_id)
 
@@ -111,21 +181,27 @@ async def create_twitch_instance(
         raise Exception("No existen tokens de Twitch guardados para este usuario")
 
     try:
+        client = await authenticate_twitch(owner_id, token, refresh_token, bot)
+        await _close_session(owner_id, bot)
+        _store_session(owner_id, bot, client)
+
+        profile = await get_profile_users(bot=bot, user_id=owner_id)
+        await _ensure_twitch_channel(owner_id, profile)
+
+        broadcaster_session = _sessions.get(_session_key(owner_id, False))
+        broadcaster_client = broadcaster_session.client if broadcaster_session else None
         if bot:
-            twitch_bot = await authenticate_twitch(owner_id, token, refresh_token)
-            user_bot = await get_profile_users(bot=True)
-            await _ensure_twitch_channel(owner_id, user_bot)
-            return twitch, twitch_bot, user_bot.id
-        twitch = await authenticate_twitch(owner_id, token, refresh_token)
-        user = await get_profile_users(bot=False)
-        await _ensure_twitch_channel(owner_id, user)
-        return twitch, twitch, user.id
+            return broadcaster_client, client, profile.id
+        return client, client, profile.id
     except Exception as e:
         raise Exception(f"Error al crear la instancia de Twitch: {str(e)}")
 
 
 async def authenticate_twitch(
-    user_id: str | None = None, token: str = None, refresh_token: str = None
+    user_id: str | None = None,
+    token: str = None,
+    refresh_token: str = None,
+    bot: bool = False,
 ):
     owner_id = _resolve_user_id(user_id)
     client_id = config.TWITCH_CLIENT_ID
@@ -144,7 +220,7 @@ async def authenticate_twitch(
             new_tokens = await refresh_access_token(owner_id, refresh_token)
             token = new_tokens["access_token"]
             refresh_token = new_tokens["refresh_token"]
-            await save_twitch_tokens(owner_id, token, refresh_token)
+            await save_twitch_tokens(owner_id, token, refresh_token, bot)
             await twitch_client.set_user_authentication(token, USER_SCOPE, refresh_token)
         except Exception as exc:
             print(traceback.format_exc())
@@ -176,46 +252,46 @@ async def _ensure_twitch_channel(user_id: str, twitch_user) -> None:
 
 
 async def get_profile_users(bot: bool = False, user_id: str | None = None):
-    global twitch
-    global twitch_bot
-    global user_bot
-    global user
     owner_id = _resolve_user_id(user_id)
+    session = await _get_or_create_session(owner_id, bot)
+    profile = await first(session.client.get_users())
+    if profile is None:
+        raise Exception(_missing_session_message(bot))
+    session.profile = profile
+    return profile
+
+
+async def return_twitch_instance(bot: bool = False, user_id: str | None = None):
+    owner_id = _resolve_user_id(user_id)
+    broadcaster_session = await _get_or_create_session(owner_id, False)
+    if broadcaster_session.profile is None:
+        await get_profile_users(bot=False, user_id=owner_id)
+    broadcaster_id = getattr(broadcaster_session.profile, "id", None)
+
     if bot:
-        if twitch_bot is None:
-            tokens = await get_tokens(owner_id, True)
-            if not tokens:
-                raise Exception("No existe una sesión de bot autenticada para este usuario")
-            twitch_bot = await authenticate_twitch(
-                owner_id, tokens["token"], tokens["refresh_token"]
-            )
-        user_bot = await first(twitch_bot.get_users())
-        return user_bot
-    if twitch is None:
-        tokens = await get_tokens(owner_id, False)
-        if not tokens:
-            raise Exception("No existe una sesión de Twitch autenticada para este usuario")
-        twitch = await authenticate_twitch(owner_id, tokens["token"], tokens["refresh_token"])
-    user = await first(twitch.get_users())
-    return user
+        bot_session = await _get_or_create_session(owner_id, True)
+        return broadcaster_session.client, bot_session.client, broadcaster_id
+    return broadcaster_session.client, broadcaster_session.client, broadcaster_id
 
 
-async def return_twitch_instance(bot: bool = False):
-    global twitch
-    global twitch_bot
-    global user
-    global user_bot
-    if bot:
-        return twitch, twitch_bot, user.id
-    return twitch, twitch, user.id
+async def _close_session(owner_id: str, bot: bool) -> None:
+    session = _sessions.pop(_session_key(owner_id, bot), None)
+    if session is None:
+        return
+    try:
+        await session.client.close()
+    except Exception as exc:
+        print(f"[TWITCH AUTH] Error al cerrar la sesión de {owner_id}: {repr(exc)}")
 
 
-async def close_twitch():
-    global twitch
-    global twitch_bot
-    if twitch:
-        await twitch.close()
-    if twitch_bot:
-        await twitch_bot.close()
-    twitch = None
-    twitch_bot = None
+async def close_twitch(user_id: str | None = None):
+    """Cierra únicamente las sesiones del usuario indicado."""
+    owner_id = _resolve_user_id(user_id)
+    for bot in (False, True):
+        await _close_session(owner_id, bot)
+
+
+async def close_all_twitch_sessions():
+    """Solo para el apagado del proceso."""
+    for key in list(_sessions.keys()):
+        await _close_session(key[0], key[1])

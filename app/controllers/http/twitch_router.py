@@ -87,7 +87,7 @@ async def stop_services(
 @router.delete("/auth")
 async def logout_twitch(current_user: ClerkUser = Depends(verify_clerk_session)):
     try:
-        await use_case_logout.execute()
+        await use_case_logout.execute(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Sesión de Twitch cerrada"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

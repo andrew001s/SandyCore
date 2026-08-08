@@ -9,7 +9,9 @@ class StartKickServicesCase:
 
     async def execute(self, user_id: str, bot: bool = False):
         try:
-            kick, kick_bot, kick_user_id = await self.kick_service.return_instance(bot)
+            kick, kick_bot, kick_user_id = await self.kick_service.return_instance(
+                bot, user_id
+            )
             await set_running(user_id, True)
             settings = await load_effective_settings(user_id)
             service_mode = str(settings.get("service_mode") or "manual").lower()

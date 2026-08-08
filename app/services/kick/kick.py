@@ -12,11 +12,11 @@ async def get_user_profile(bot: bool = False, user_id=None) -> dict:
         raise Exception(f"Error al obtener el perfil: {str(e)}")
 
 
-async def close_kick():
-    await stop_services()
-    await disarm()
+async def close_kick(user_id=None):
+    await stop_services(user_id)
+    await disarm(user_id)
 
 
-async def logout_kick():
-    await auth.close_kick()
+async def logout_kick(user_id=None):
+    await auth.close_kick(user_id)
 
