@@ -4,6 +4,11 @@ from functools import lru_cache
 from typing import Any
 
 from app.core.config import config
+from app.core.security.secret_crypto import (
+    decrypt_secret,
+    encrypt_secret,
+    encrypt_secret_map,
+)
 
 _TABLE_USER_SETTINGS = "user_settings"
 _TABLE_TWITCH_TOKENS = "twitch_tokens"
@@ -103,8 +108,8 @@ def save_twitch_tokens_sync(
     payload = {
         "user_id": user_id,
         "bot": bool(bot),
-        "access_token": token,
-        "refresh_token": refresh_token,
+        "access_token": encrypt_secret(token),
+        "refresh_token": encrypt_secret(refresh_token),
     }
     client.table(_TABLE_TWITCH_TOKENS).upsert(
         payload,
@@ -133,8 +138,8 @@ def get_twitch_tokens_sync(user_id: str, bot: bool = False) -> dict[str, str] | 
         return None
     row = rows[0]
     return {
-        "token": row["access_token"],
-        "refresh_token": row["refresh_token"],
+        "token": decrypt_secret(row["access_token"]),
+        "refresh_token": decrypt_secret(row["refresh_token"]),
     }
 
 
@@ -149,8 +154,8 @@ def save_kick_tokens_sync(
     payload = {
         "user_id": user_id,
         "bot": bool(bot),
-        "access_token": token,
-        "refresh_token": refresh_token,
+        "access_token": encrypt_secret(token),
+        "refresh_token": encrypt_secret(refresh_token),
     }
     client.table(_TABLE_KICK_TOKENS).upsert(
         payload,
@@ -179,8 +184,8 @@ def get_kick_tokens_sync(user_id: str, bot: bool = False) -> dict[str, str] | No
         return None
     row = rows[0]
     return {
-        "token": row["access_token"],
-        "refresh_token": row["refresh_token"],
+        "token": decrypt_secret(row["access_token"]),
+        "refresh_token": decrypt_secret(row["refresh_token"]),
     }
 
 
@@ -246,8 +251,8 @@ def save_youtube_tokens_sync(
     client = _supabase_client()
     payload = {
         "user_id": user_id,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "access_token": encrypt_secret(access_token),
+        "refresh_token": encrypt_secret(refresh_token),
         "expires_at": expires_at,
         "scope": json.dumps(scope) if isinstance(scope, list) else scope,
         "token_type": token_type,
@@ -305,8 +310,8 @@ def get_youtube_tokens_sync(user_id: str) -> dict[str, Any] | None:
         except Exception:
             pass
     return {
-        "token": row.get("access_token"),
-        "refresh_token": row.get("refresh_token"),
+        "token": decrypt_secret(row.get("access_token")),
+        "refresh_token": decrypt_secret(row.get("refresh_token")),
         "expires_at": row.get("expires_at"),
         "scope": scope,
         "token_type": row.get("token_type"),
@@ -326,3 +331,93 @@ def delete_youtube_tokens_sync(user_id: str) -> None:
 
 async def delete_youtube_tokens(user_id: str) -> None:
     await asyncio.to_thread(delete_youtube_tokens_sync, user_id)
+
+
+def backfill_encrypted_secrets_sync() -> dict[str, int]:
+    client = _supabase_client()
+    stats = {
+        "user_settings": 0,
+        "twitch_tokens": 0,
+        "kick_tokens": 0,
+        "youtube_tokens": 0,
+    }
+
+    user_settings_rows = (
+        client.table(_TABLE_USER_SETTINGS).select("user_id, settings_json").execute()
+    )
+    for row in getattr(user_settings_rows, "data", None) or []:
+        settings = _normalize_json(row.get("settings_json"))
+        encrypted_settings = encrypt_secret_map(
+            settings,
+            {
+                "gemini_api_key",
+                "openrouter_api_key",
+                "azure_speech_key",
+                "fish_audio_key",
+            },
+        )
+        if encrypted_settings != settings:
+            client.table(_TABLE_USER_SETTINGS).upsert(
+                {
+                    "user_id": row["user_id"],
+                    "settings_json": encrypted_settings,
+                },
+                on_conflict="user_id",
+            ).execute()
+            stats["user_settings"] += 1
+
+    twitch_rows = (
+        client.table(_TABLE_TWITCH_TOKENS)
+        .select("user_id, bot, access_token, refresh_token")
+        .execute()
+    )
+    for row in getattr(twitch_rows, "data", None) or []:
+        client.table(_TABLE_TWITCH_TOKENS).upsert(
+            {
+                "user_id": row["user_id"],
+                "bot": bool(row.get("bot")),
+                "access_token": encrypt_secret(row.get("access_token")),
+                "refresh_token": encrypt_secret(row.get("refresh_token")),
+            },
+            on_conflict="user_id,bot",
+        ).execute()
+        stats["twitch_tokens"] += 1
+
+    kick_rows = (
+        client.table(_TABLE_KICK_TOKENS)
+        .select("user_id, bot, access_token, refresh_token")
+        .execute()
+    )
+    for row in getattr(kick_rows, "data", None) or []:
+        client.table(_TABLE_KICK_TOKENS).upsert(
+            {
+                "user_id": row["user_id"],
+                "bot": bool(row.get("bot")),
+                "access_token": encrypt_secret(row.get("access_token")),
+                "refresh_token": encrypt_secret(row.get("refresh_token")),
+            },
+            on_conflict="user_id,bot",
+        ).execute()
+        stats["kick_tokens"] += 1
+
+    youtube_rows = (
+        client.table(_TABLE_YOUTUBE_TOKENS)
+        .select("user_id, access_token, refresh_token")
+        .execute()
+    )
+    for row in getattr(youtube_rows, "data", None) or []:
+        client.table(_TABLE_YOUTUBE_TOKENS).upsert(
+            {
+                "user_id": row["user_id"],
+                "access_token": encrypt_secret(row.get("access_token")),
+                "refresh_token": encrypt_secret(row.get("refresh_token")),
+            },
+            on_conflict="user_id",
+        ).execute()
+        stats["youtube_tokens"] += 1
+
+    return stats
+
+
+async def backfill_encrypted_secrets() -> dict[str, int]:
+    return await asyncio.to_thread(backfill_encrypted_secrets_sync)

@@ -3,6 +3,7 @@ from typing import Any
 
 from app.core.runtime import get_active_user_id
 from app.core.personality import load_personality_template
+from app.core.security.secret_crypto import decrypt_secret_map, encrypt_secret_map
 from app.services.storage.supabase_store import get_user_settings, upsert_user_settings
 
 
@@ -37,6 +38,13 @@ SETTINGS_KEYS = {
     "auto_start_on_live",
     "auto_stop_on_offline",
     "idle_timeout_minutes",
+}
+
+SENSITIVE_SETTING_KEYS = {
+    "gemini_api_key",
+    "openrouter_api_key",
+    "azure_speech_key",
+    "fish_audio_key",
 }
 
 DEFAULT_FEATURE_FLAGS = {
@@ -107,7 +115,7 @@ def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
                     payload[key] = _merge_dicts(payload[key], settings[key])
                 else:
                     payload[key] = settings[key]
-    return payload
+    return decrypt_secret_map(payload, SENSITIVE_SETTING_KEYS)
 
 
 def resolve_feature_flags(settings: dict[str, Any] | None) -> dict[str, bool]:
@@ -140,5 +148,7 @@ async def save_effective_settings(
     current.update(
         {key: value for key, value in settings.items() if key in SETTINGS_KEYS}
     )
-    await upsert_user_settings(owner_id, current)
+    await upsert_user_settings(
+        owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)
+    )
     return current

@@ -70,9 +70,11 @@ Asegúrate de tener **Python 3.8 o superior** y **pip** instalados en tu sistema
      TWITCH_SECRET=your_secret_here
      TWITCH_CLIENT_ID=your_client_id_here
      GEMINI_API_KEY=your_gemini_api_key_here
+     DATA_ENCRYPTION_KEY=your_fernet_key_here
    ```
 
    Estas variables son necesarias para la autenticación con Twitch y servicios de IA. El canal activo se resuelve por usuario autenticado y se guarda en su configuración, así que no debe ir quemado en el `.env`.
+   `DATA_ENCRYPTION_KEY` debe ser una clave Fernet estable, porque se usa para cifrar en reposo los tokens y las API keys sensibles guardadas por la aplicación.
 
 4. **Ejecutar el servidor**:
 

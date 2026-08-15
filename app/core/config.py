@@ -19,6 +19,9 @@ class Config:
         or os.getenv("SUPABASE_SECRET_KEY")
         or os.getenv("SUPABASE_KEY")
     )
+    DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY") or os.getenv(
+        "APP_DATA_ENCRYPTION_KEY"
+    )
     TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
     TWITCH_SECRET = os.getenv("TWITCH_SECRET")
     TWITCH_REDIRECT_URI = os.getenv("TWITCH_REDIRECT_URI")
