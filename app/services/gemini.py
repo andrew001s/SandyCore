@@ -98,12 +98,31 @@ def clear_history(user_id: str | None = None) -> None:
     _history_by_user.pop(_history_key(user_id), None)
 
 
+def _record_exchange(
+    user_entry: str,
+    response: str,
+    user_id: str | None = None,
+    *,
+    bot_prefix: str = "",
+) -> None:
+    """Registra el turno SOLO si la IA respondió.
+
+    Escribir el mensaje del usuario antes de llamar a la IA dejaba, cuando la
+    llamada fallaba, un turno sin respuesta en el historial. Ese residuo se
+    reenviaba como contexto en la siguiente petición que sí funcionaba y el
+    modelo terminaba contestando de golpe todos los mensajes acumulados.
+    """
+    if not response:
+        return
+    add_to_history(user_entry, user_id)
+    add_to_history(f"{bot_prefix}{response}", user_id)
+
+
 async def response_sandy(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    add_to_history("user:" + message, user_id)
     response = await client_gemini(message, prompts["vtuber"], user_id)
-    add_to_history(response, user_id)
+    _record_exchange("user:" + message, response, user_id)
     await register_activity_and_monitor(user_id)
     return response
 
@@ -136,18 +155,16 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "interaccion":
-        add_to_history("streamer:" + message, user_id)
         response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-        add_to_history("bot:" + response, user_id)
+        _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
         await register_activity_and_monitor(user_id)
         return response
 
     print(
         f"[GEMINI] response_assist.type inesperado: {getattr(response_assist, 'type', None)!r}"
     )
-    add_to_history("streamer:" + message, user_id)
     response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-    add_to_history("bot:" + response, user_id)
+    _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
     await register_activity_and_monitor(user_id)
     return response
 

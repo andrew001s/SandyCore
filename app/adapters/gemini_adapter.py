@@ -1,8 +1,66 @@
 import time
+import traceback
 
 from pydantic import BaseModel
 
 from app.core.ports.ai_port import AIPort
+
+
+def _unwrap_error(exc: BaseException) -> BaseException:
+    """Desenvuelve el RetryError con el que el SDK de Gemini tapa el error real.
+
+    Sin `http_options.retry_options`, el SDK envuelve la llamada en un
+    `tenacity.Retrying(stop=stop_after_attempt(1))`. Al no llevar `reraise`,
+    cualquier excepción sale como `RetryError(<Future ... raised ClientError>)`,
+    sin el código HTTP ni el mensaje de la API, que es justo lo que hace falta
+    para saber si fue cuota, credencial o modelo inexistente.
+    """
+    seen: set[int] = set()
+    current: BaseException = exc
+    while id(current) not in seen:
+        seen.add(id(current))
+        last_attempt = getattr(current, "last_attempt", None)
+        if last_attempt is None or not hasattr(last_attempt, "exception"):
+            break
+        try:
+            inner = last_attempt.exception()
+        except Exception:
+            break
+        if inner is None:
+            break
+        current = inner
+    return current
+
+
+def _describe_error(exc: BaseException) -> str:
+    real = _unwrap_error(exc)
+    code = getattr(real, "code", None)
+    message = getattr(real, "message", None)
+    if code is not None or message:
+        detalle = f"{type(real).__name__} {code if code is not None else ''}".strip()
+        return f"{detalle}: {message}" if message else detalle
+    return repr(real)
+
+
+def _extract_text(response) -> str | None:
+    text = getattr(response, "text", None)
+    if text:
+        return text
+    # Sin texto: casi siempre es un bloqueo por filtros de seguridad o un corte
+    # por longitud. El motivo viaja en el candidato o en el prompt_feedback.
+    motivos = []
+    for candidate in getattr(response, "candidates", None) or []:
+        finish_reason = getattr(candidate, "finish_reason", None)
+        if finish_reason:
+            motivos.append(str(finish_reason))
+    feedback = getattr(response, "prompt_feedback", None)
+    if feedback is not None:
+        motivos.append(f"prompt_feedback={feedback}")
+    if motivos:
+        print(f"[GEMINI] Respuesta sin texto ({', '.join(motivos)})")
+    else:
+        print("[GEMINI] Respuesta sin texto y sin motivo declarado")
+    return None
 
 
 class GeminiAdapter(AIPort):
@@ -13,18 +71,31 @@ class GeminiAdapter(AIPort):
         self.model = model
 
     async def generate_text(self, message: str, system_instruction: str) -> str:
-        start = time.perf_counter()
-        print(f"[GEMINI] Enviando prompt a {self.model}...")
         from google.genai import types
 
-        chat = self.client.chats.create(
-            model=self.model,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction
-            ),
-        )
-        result = chat.send_message(message).text
+        start = time.perf_counter()
+        print(f"[GEMINI] Enviando prompt a {self.model}...")
+        try:
+            # `client.aio` es la API asíncrona. La versión síncrona bloqueaba el
+            # event loop durante toda la llamada, congelando de paso el chat,
+            # EventSub y los streams SSE del resto de usuarios del proceso.
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction
+                ),
+            )
+        except Exception as exc:
+            detalle = _describe_error(exc)
+            print(f"[GEMINI] ERROR al generar texto: {detalle}")
+            print(traceback.format_exc())
+            raise Exception(f"Gemini falló al generar texto: {detalle}") from exc
+
         elapsed = time.perf_counter() - start
+        result = _extract_text(response)
+        if not result:
+            raise Exception("Gemini devolvió una respuesta vacía")
         print(f"[GEMINI] Respuesta en {elapsed:.2f}s ({len(result)} chars): {result[:200]}")
         return result
 
@@ -33,14 +104,25 @@ class GeminiAdapter(AIPort):
     ) -> BaseModel:
         start = time.perf_counter()
         print(f"[GEMINI] Enviando prompt estructurado a {self.model}...")
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=content,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": response_model,
-            },
-        )
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=content,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": response_model,
+                },
+            )
+        except Exception as exc:
+            detalle = _describe_error(exc)
+            print(f"[GEMINI] ERROR al generar estructura: {detalle}")
+            print(traceback.format_exc())
+            raise Exception(f"Gemini falló al generar estructura: {detalle}") from exc
+
         elapsed = time.perf_counter() - start
         print(f"[GEMINI] Respuesta estructurada en {elapsed:.2f}s")
-        return response.parsed
+        parsed = getattr(response, "parsed", None)
+        if parsed is None:
+            print("[GEMINI] ADVERTENCIA: structured sin parsear, usando fallback")
+            return response_model()
+        return parsed
