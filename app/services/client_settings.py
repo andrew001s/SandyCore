@@ -53,6 +53,11 @@ DEFAULT_CHUNK_SIZE = 3
 CHUNK_SIZE_MIN = 1
 CHUNK_SIZE_MAX = 10
 
+# El onboarding antiguo guardaba 'fish' como proveedor de TTS. El valor bueno
+# es 'fish_audio'; se normaliza al leer y al escribir para que un perfil viejo
+# no arrastre el alias aunque nunca se ejecute la migración retroactiva.
+TTS_PROVIDER_ALIASES = {"fish": "fish_audio"}
+
 DEFAULT_FEATURE_FLAGS = {
     "chat_replies": True,
     "voice_replies": True,
@@ -113,6 +118,12 @@ def _defaults() -> dict[str, Any]:
     }
 
 
+def normalize_tts_provider(value: Any) -> Any:
+    if isinstance(value, str):
+        return TTS_PROVIDER_ALIASES.get(value.strip().lower(), value)
+    return value
+
+
 def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
     payload = _defaults()
     if settings:
@@ -122,6 +133,7 @@ def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
                     payload[key] = _merge_dicts(payload[key], settings[key])
                 else:
                     payload[key] = settings[key]
+    payload["tts_provider"] = normalize_tts_provider(payload.get("tts_provider"))
     return decrypt_secret_map(payload, SENSITIVE_SETTING_KEYS)
 
 
@@ -169,6 +181,7 @@ async def save_effective_settings(
     current.update(
         {key: value for key, value in settings.items() if key in SETTINGS_KEYS}
     )
+    current["tts_provider"] = normalize_tts_provider(current.get("tts_provider"))
     await upsert_user_settings(
         owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)
     )
