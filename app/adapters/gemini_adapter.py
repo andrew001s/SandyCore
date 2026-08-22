@@ -4,42 +4,12 @@ import traceback
 from pydantic import BaseModel
 
 from app.core.ports.ai_port import AIPort
-
-
-def _unwrap_error(exc: BaseException) -> BaseException:
-    """Desenvuelve el RetryError con el que el SDK de Gemini tapa el error real.
-
-    Sin `http_options.retry_options`, el SDK envuelve la llamada en un
-    `tenacity.Retrying(stop=stop_after_attempt(1))`. Al no llevar `reraise`,
-    cualquier excepción sale como `RetryError(<Future ... raised ClientError>)`,
-    sin el código HTTP ni el mensaje de la API, que es justo lo que hace falta
-    para saber si fue cuota, credencial o modelo inexistente.
-    """
-    seen: set[int] = set()
-    current: BaseException = exc
-    while id(current) not in seen:
-        seen.add(id(current))
-        last_attempt = getattr(current, "last_attempt", None)
-        if last_attempt is None or not hasattr(last_attempt, "exception"):
-            break
-        try:
-            inner = last_attempt.exception()
-        except Exception:
-            break
-        if inner is None:
-            break
-        current = inner
-    return current
-
-
-def _describe_error(exc: BaseException) -> str:
-    real = _unwrap_error(exc)
-    code = getattr(real, "code", None)
-    message = getattr(real, "message", None)
-    if code is not None or message:
-        detalle = f"{type(real).__name__} {code if code is not None else ''}".strip()
-        return f"{detalle}: {message}" if message else detalle
-    return repr(real)
+from app.domain.ai_errors import (
+    CONTENT_BLOCKED,
+    EMPTY_RESPONSE,
+    AIProviderError,
+    classify_ai_error,
+)
 
 
 def _extract_text(response) -> str | None:
@@ -113,14 +83,24 @@ class GeminiAdapter(AIPort):
                 response = await self._call(message, system_instruction, [])
                 result = _extract_text(response)
         except Exception as exc:
-            detalle = _describe_error(exc)
-            print(f"[GEMINI] ERROR al generar texto: {detalle}")
+            error = classify_ai_error(exc, provider="gemini", model=self.model)
+            print(f"[GEMINI] ERROR al generar texto: {error!r}")
             print(traceback.format_exc())
-            raise Exception(f"Gemini falló al generar texto: {detalle}") from exc
+            raise error from exc
 
         elapsed = time.perf_counter() - start
         if not result:
-            raise Exception("Gemini devolvió una respuesta vacía")
+            # `_extract_text` ya dejó el motivo en el log; si fue un bloqueo de
+            # los filtros lo distinguimos para que el usuario sepa qué pasó.
+            bloqueado = any(
+                "SAFETY" in str(getattr(c, "finish_reason", "")).upper()
+                for c in (getattr(response, "candidates", None) or [])
+            )
+            raise AIProviderError(
+                CONTENT_BLOCKED if bloqueado else EMPTY_RESPONSE,
+                provider="gemini",
+                model=self.model,
+            )
         print(f"[GEMINI] Respuesta en {elapsed:.2f}s ({len(result)} chars): {result[:200]}")
         return result
 
@@ -139,10 +119,10 @@ class GeminiAdapter(AIPort):
                 },
             )
         except Exception as exc:
-            detalle = _describe_error(exc)
-            print(f"[GEMINI] ERROR al generar estructura: {detalle}")
+            error = classify_ai_error(exc, provider="gemini", model=self.model)
+            print(f"[GEMINI] ERROR al generar estructura: {error!r}")
             print(traceback.format_exc())
-            raise Exception(f"Gemini falló al generar estructura: {detalle}") from exc
+            raise error from exc
 
         elapsed = time.perf_counter() - start
         print(f"[GEMINI] Respuesta estructurada en {elapsed:.2f}s")

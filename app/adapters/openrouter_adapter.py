@@ -5,6 +5,11 @@ import time
 from pydantic import BaseModel, ValidationError
 
 from app.core.ports.ai_port import AIPort
+from app.domain.ai_errors import (
+    EMPTY_RESPONSE,
+    AIProviderError,
+    classify_ai_error,
+)
 
 
 def _extract_json(raw: str) -> str:
@@ -96,7 +101,9 @@ class OpenRouterAdapter(AIPort):
             self._log_response("Respuesta inicial", response)
             result = self._extract_content(response)
         except Exception as exc:
-            raise Exception(f"OpenRouter falló al generar texto: {repr(exc)}") from exc
+            error = classify_ai_error(exc, provider="openrouter", model=self.model)
+            print(f"[OPENROUTER] ERROR al generar texto: {error!r}")
+            raise error from exc
 
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta en {elapsed:.2f}s")
@@ -134,7 +141,9 @@ class OpenRouterAdapter(AIPort):
             print(f"[OPENROUTER] Reintento exitoso en {elapsed2:.2f}s")
         if not result:
             print("[OPENROUTER] ERROR: la respuesta sigue vacía tras el reintento.")
-            result = "No pude generar una respuesta en este momento."
+            raise AIProviderError(
+                EMPTY_RESPONSE, provider="openrouter", model=self.model
+            )
         print(f"[OPENROUTER] Respuesta ({len(result)} chars): {result[:200]}")
         return result
 
@@ -151,7 +160,9 @@ class OpenRouterAdapter(AIPort):
             )
             raw = self._extract_content(response)
         except Exception as exc:
-            raise Exception(f"OpenRouter falló al generar estructura: {repr(exc)}") from exc
+            error = classify_ai_error(exc, provider="openrouter", model=self.model)
+            print(f"[OPENROUTER] ERROR al generar estructura: {error!r}")
+            raise error from exc
 
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta estructurada en {elapsed:.2f}s")
