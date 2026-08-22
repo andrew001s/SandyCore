@@ -1,3 +1,18 @@
+## v2.2.0 (2026-08-22)
+
+### Feat
+
+- **chat**: ✨ agregar soporte para tamaño de lote de mensajes en respuestas de chat
+
+### Fix
+
+- **tts**: 🐛 normalizar el proveedor de TTS de 'fish' a 'fish_audio' en la configuración del usuario
+- **errors**: 🐛 mejorar el manejo de errores en los routers de Twitch, YouTube, Kick y Settings
+- **gemini**: 🐛 mejorar el manejo de errores y respuestas vacías en el adaptador de Gemini
+- **gemini**: 🐛 mejorar el manejo de respuestas y agregar soporte para nombres de persona
+- **gemini**: 🐛 registrar intercambios de usuario y respuesta para evitar turnos vacíos en el historial
+- **gemini**: 🐛 actualizar el historial de mensajes para usar "streamer" en lugar de "shandrew"
+
 ## v2.1.0 (2026-08-15)
 
 ### Feat
