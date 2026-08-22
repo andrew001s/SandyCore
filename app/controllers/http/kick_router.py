@@ -15,6 +15,7 @@ from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.models.kick_auth_model import KickAuth
 from app.models.tokens_model import TokenModel
 from app.services.kick.lifecycle import get_service_status
+from app.domain.errors import error_payload
 
 router = APIRouter(prefix="/kick", tags=["Kick"])
 use_case_auth = KickAuthUseCase(KickService())
@@ -50,7 +51,8 @@ async def authenticate_kick_user(
         raise
     except Exception as e:
         print(f"[KICK AUTH ERROR] {repr(e)}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/start")
@@ -61,7 +63,8 @@ async def start_services(
         await use_case_start.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/stop")
@@ -72,7 +75,8 @@ async def stop_services(
         await use_case_stop.execute(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Automatización pausada"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.delete("/auth")
@@ -81,7 +85,8 @@ async def logout_kick(current_user: ClerkUser = Depends(verify_clerk_session)):
         await use_case_logout.execute(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Sesión de Kick cerrada"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/service-status")
@@ -92,7 +97,8 @@ async def service_status(
         status = await get_service_status(current_user.user_id)
         return JSONResponse(status_code=200, content={"service": status})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/profile")
@@ -113,7 +119,8 @@ async def get_profile(
                     "message": "No hay tokens de Kick guardados para este usuario",
                 },
             )
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/tokens")
@@ -124,7 +131,8 @@ async def get_tokens(
         tokens = await use_case_tokens.execute(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"tokens": tokens})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.put("/tokens")
@@ -137,4 +145,5 @@ async def save_tokens(
         )
         return JSONResponse(status_code=200, content={"message": "Tokens guardados exitosamente"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="kick")
+        return JSONResponse(status_code=status_code, content=body)

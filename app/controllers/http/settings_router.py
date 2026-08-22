@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.models.client_settings_model import ClientSettingsModel
 from app.services.client_settings import load_effective_settings, save_effective_settings
+from app.domain.errors import error_payload
 
 router = APIRouter(tags=["Settings"])
 
@@ -14,7 +15,8 @@ async def get_settings(current_user: ClerkUser = Depends(verify_clerk_session)):
         settings = await load_effective_settings(current_user.user_id)
         return JSONResponse(status_code=200, content={"settings": settings})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e)
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.put("/settings")
@@ -27,4 +29,5 @@ async def update_settings(
         )
         return JSONResponse(status_code=200, content={"settings": settings})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e)
+        return JSONResponse(status_code=status_code, content=body)
