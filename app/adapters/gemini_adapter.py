@@ -70,22 +70,48 @@ class GeminiAdapter(AIPort):
         self.client = genai.Client(api_key=api_key)
         self.model = model
 
-    async def generate_text(self, message: str, system_instruction: str) -> str:
+    # Gemini admite hasta 5 secuencias de parada.
+    MAX_STOP_SEQUENCES = 5
+
+    async def _call(self, message: str, system_instruction: str, stop_sequences: list[str]):
         from google.genai import types
 
+        # `client.aio` es la API asíncrona. La versión síncrona bloqueaba el
+        # event loop durante toda la llamada, congelando de paso el chat,
+        # EventSub y los streams SSE del resto de usuarios del proceso.
+        return await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                stop_sequences=stop_sequences or None,
+            ),
+        )
+
+    async def generate_text(
+        self,
+        message: str,
+        system_instruction: str,
+        stop: list[str] | None = None,
+    ) -> str:
         start = time.perf_counter()
         print(f"[GEMINI] Enviando prompt a {self.model}...")
+        stop_sequences = [s for s in (stop or []) if s][: self.MAX_STOP_SEQUENCES]
+
         try:
-            # `client.aio` es la API asíncrona. La versión síncrona bloqueaba el
-            # event loop durante toda la llamada, congelando de paso el chat,
-            # EventSub y los streams SSE del resto de usuarios del proceso.
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=message,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction
-                ),
-            )
+            response = await self._call(message, system_instruction, stop_sequences)
+            result = _extract_text(response)
+
+            # Si el modelo arranca con su propia etiqueta, la secuencia de parada
+            # salta en el carácter cero y devuelve vacío. Se reintenta sin ellas y
+            # el saneador de la capa superior recorta el turno sobrante.
+            if not result and stop_sequences:
+                print(
+                    "[GEMINI] ADVERTENCIA: vacío con secuencias de parada, "
+                    "reintentando sin ellas..."
+                )
+                response = await self._call(message, system_instruction, [])
+                result = _extract_text(response)
         except Exception as exc:
             detalle = _describe_error(exc)
             print(f"[GEMINI] ERROR al generar texto: {detalle}")
@@ -93,7 +119,6 @@ class GeminiAdapter(AIPort):
             raise Exception(f"Gemini falló al generar texto: {detalle}") from exc
 
         elapsed = time.perf_counter() - start
-        result = _extract_text(response)
         if not result:
             raise Exception("Gemini devolvió una respuesta vacía")
         print(f"[GEMINI] Respuesta en {elapsed:.2f}s ({len(result)} chars): {result[:200]}")

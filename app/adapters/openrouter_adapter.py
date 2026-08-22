@@ -65,16 +65,33 @@ class OpenRouterAdapter(AIPort):
                 f"content={content_preview!r}"
             )
 
-    async def generate_text(self, message: str, system_instruction: str) -> str:
+    # OpenAI acepta como mucho 4 secuencias de parada y algunos proveedores de
+    # OpenRouter son más estrictos todavía; se recorta para no invalidar la
+    # petición entera por un perfil con muchas etiquetas.
+    MAX_STOP_SEQUENCES = 4
+
+    def _messages(self, message: str, system_instruction: str) -> list[dict]:
+        return [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": message},
+        ]
+
+    async def generate_text(
+        self,
+        message: str,
+        system_instruction: str,
+        stop: list[str] | None = None,
+    ) -> str:
         start = time.perf_counter()
         print(f"[OPENROUTER] Enviando prompt a {self.model}...")
+        stop_sequences = [s for s in (stop or []) if s][: self.MAX_STOP_SEQUENCES]
+        extra = {"stop": stop_sequences} if stop_sequences else {}
+
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": message},
-                ],
+                messages=self._messages(message, system_instruction),
+                **extra,
             )
             self._log_response("Respuesta inicial", response)
             result = self._extract_content(response)
@@ -83,6 +100,22 @@ class OpenRouterAdapter(AIPort):
 
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta en {elapsed:.2f}s")
+
+        # Si el modelo arranca con su propia etiqueta, la secuencia de parada
+        # salta en el carácter cero y devuelve vacío. Se reintenta sin ellas y
+        # el saneador de la capa superior recorta el turno sobrante.
+        if not result and stop_sequences:
+            print(
+                "[OPENROUTER] ADVERTENCIA: vacío con secuencias de parada, "
+                "reintentando sin ellas..."
+            )
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=self._messages(message, system_instruction),
+            )
+            self._log_response("Reintento sin stop", response)
+            result = self._extract_content(response)
+
         if result is None:
             print(
                 "[OPENROUTER] ADVERTENCIA: respuesta vacía, reintentando sin system role..."
@@ -93,6 +126,7 @@ class OpenRouterAdapter(AIPort):
                 messages=[
                     {"role": "user", "content": f"{system_instruction}\n\n{message}"},
                 ],
+                **extra,
             )
             self._log_response("Reintento", response)
             result = self._extract_content(response)
