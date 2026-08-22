@@ -32,3 +32,4 @@ class ClientSettingsModel(BaseModel):
     auto_start_on_live: Optional[bool] = None
     auto_stop_on_offline: Optional[bool] = None
     idle_timeout_minutes: Optional[int] = None
+    chunk_size: Optional[int] = None

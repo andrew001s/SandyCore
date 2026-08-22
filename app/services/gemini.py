@@ -1,5 +1,6 @@
 from collections import deque
 import unicodedata
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -7,7 +8,7 @@ from app.core.runtime import get_active_user_id
 from app.core.ports.ai_port import AIPort
 from app.services.client_settings import load_effective_settings
 from app.services.twitch.lifecycle import register_activity_and_monitor
-from app.domain.prompts import build_prompt_bundle
+from app.domain.prompts import build_prompt_bundle, resolve_persona_profile
 
 
 class Order(BaseModel):
@@ -66,11 +67,78 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
     return client
 
 
-async def client_gemini(message: str, prompt: str, user_id: str | None = None) -> str:
+# Marcas con las que el modelo abre un turno nuevo. El historial que le pasamos
+# tiene forma de transcripción, así que a veces sigue escribiendo el siguiente
+# turno además del suyo, repitiendo la respuesta con su propio nombre delante.
+_TURN_MARKERS = ("user:", "usuario:", "streamer:", "bot:", "viewer:")
+
+
+def persona_name(settings: dict[str, Any] | None) -> str:
+    profile = resolve_persona_profile(settings)
+    name = profile.get("name") if isinstance(profile, dict) else None
+    return str(name).strip() if name else ""
+
+
+def _sanitize_reply(response: str, name: str | None = None) -> str:
+    """Recorta el turno extra que el modelo a veces añade a su propia respuesta."""
+    text = (response or "").strip()
+    if not text:
+        return text
+
+    markers = [m for m in (f"{name}:" if name else "",) if m] + list(_TURN_MARKERS)
+    lowered = text.lower()
+
+    # Un prefijo al inicio es solo la etiqueta del turno propio: se quita.
+    for marker in markers:
+        if lowered.startswith(marker.lower()):
+            text = text[len(marker) :].lstrip()
+            lowered = text.lower()
+            break
+
+    # A partir de ahí, cualquier marca abre un turno que no le toca escribir.
+    cut = len(text)
+    for marker in markers:
+        idx = lowered.find(marker.lower())
+        if idx > 0:
+            cut = min(cut, idx)
+    return text[:cut].strip()
+
+
+def build_stop_sequences(name: str | None = None) -> list[str]:
+    """Secuencias que impiden al modelo escribir el turno siguiente.
+
+    El nombre del personaje va primero porque es la etiqueta con la que más
+    veces reabre la conversación por su cuenta.
+    """
+    sequences = [f"{name}:"] if name else []
+    sequences.extend(_TURN_MARKERS)
+    vistos: set[str] = set()
+    unicas = []
+    for seq in sequences:
+        clave = seq.lower()
+        if clave not in vistos:
+            vistos.add(clave)
+            unicas.append(seq)
+    return unicas
+
+
+async def client_gemini(
+    message: str,
+    prompt: str,
+    user_id: str | None = None,
+    name: str | None = None,
+) -> str:
     client = await _get_ai_client(user_id)
     context = generate_context(user_id)
-    full_prompt = f"{prompt}\nHistorial conversacion: {context}\n{message}"
-    return await client.generate_text(message, full_prompt)
+    # El mensaje NO se repite aquí: los adaptadores ya lo mandan como turno de
+    # usuario. Enviarlo también dentro del prompt lo duplicaba en la petición.
+    full_prompt = f"{prompt}\nHistorial conversacion: {context}"
+    raw = await client.generate_text(
+        message, full_prompt, build_stop_sequences(name)
+    )
+    # El saneador se queda como red: los proveedores no siempre respetan `stop`,
+    # y no cubre el caso de la etiqueta al inicio de la respuesta.
+    return _sanitize_reply(raw, name)
 
 
 async def client_gemini_order(
@@ -98,12 +166,31 @@ def clear_history(user_id: str | None = None) -> None:
     _history_by_user.pop(_history_key(user_id), None)
 
 
+def _record_exchange(
+    user_entry: str,
+    response: str,
+    user_id: str | None = None,
+    *,
+    bot_prefix: str = "",
+) -> None:
+    """Registra el turno SOLO si la IA respondió.
+
+    Escribir el mensaje del usuario antes de llamar a la IA dejaba, cuando la
+    llamada fallaba, un turno sin respuesta en el historial. Ese residuo se
+    reenviaba como contexto en la siguiente petición que sí funcionaba y el
+    modelo terminaba contestando de golpe todos los mensajes acumulados.
+    """
+    if not response:
+        return
+    add_to_history(user_entry, user_id)
+    add_to_history(f"{bot_prefix}{response}", user_id)
+
+
 async def response_sandy(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    add_to_history("user:" + message, user_id)
-    response = await client_gemini(message, prompts["vtuber"], user_id)
-    add_to_history(response, user_id)
+    response = await client_gemini(message, prompts["vtuber"], user_id, persona_name(settings))
+    _record_exchange("user:" + message, response, user_id)
     await register_activity_and_monitor(user_id)
     return response
 
@@ -127,27 +214,25 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
             name=response_assist.order_name,
             user_id=user_id,
         )
-        response = await client_gemini(message, prompts["vtuber"], user_id)
+        response = await client_gemini(message, prompts["vtuber"], user_id, persona_name(settings))
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "statistics":
         stadistics = await get_stream_info(user_id)
-        response = await client_gemini(str(stadistics), prompts["statistics"], user_id)
+        response = await client_gemini(str(stadistics), prompts["statistics"], user_id, persona_name(settings))
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "interaccion":
-        add_to_history("shandrew:" + message, user_id)
-        response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-        add_to_history("bot:" + response, user_id)
+        response = await client_gemini(message, prompts["vtuber_shandrew"], user_id, persona_name(settings))
+        _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
         await register_activity_and_monitor(user_id)
         return response
 
     print(
         f"[GEMINI] response_assist.type inesperado: {getattr(response_assist, 'type', None)!r}"
     )
-    add_to_history("shandrew:" + message, user_id)
-    response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
-    add_to_history("bot:" + response, user_id)
+    response = await client_gemini(message, prompts["vtuber_shandrew"], user_id, persona_name(settings))
+    _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
     await register_activity_and_monitor(user_id)
     return response
 
@@ -155,14 +240,14 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
 async def check_message(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["mod"], user_id)
+    response = await client_gemini(message, prompts["mod"], user_id, persona_name(settings))
     return response
 
 
 async def response_gemini_rewards(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["rewards"], user_id)
+    response = await client_gemini(message, prompts["rewards"], user_id, persona_name(settings))
     await register_activity_and_monitor(user_id)
     return response
 
@@ -170,6 +255,6 @@ async def response_gemini_rewards(message: str, user_id: str | None = None) -> s
 async def response_gemini_events(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["events"], user_id)
+    response = await client_gemini(message, prompts["events"], user_id, persona_name(settings))
     await register_activity_and_monitor(user_id)
     return response

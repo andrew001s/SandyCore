@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.adapters.youtube_services import YouTubeService
 from app.core.security.clerk import ClerkUser, verify_clerk_session
+from app.domain.errors import error_payload
 from app.models.youtube_models import (
     YouTubeBroadcastUpdateModel,
     YouTubeChatMessageModel,
@@ -31,7 +32,8 @@ async def start_auth(
         data = await use_case.start_auth(current_user.user_id, redirect_uri)
         return JSONResponse(status_code=200, content=data)
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/auth/callback")
@@ -70,7 +72,8 @@ async def auth_callback(
             status_code=200,
         )
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/profile")
@@ -90,7 +93,8 @@ async def get_profile(
                     "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/tokens")
@@ -110,7 +114,8 @@ async def get_tokens(
                     "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/service-status")
@@ -119,7 +124,8 @@ async def service_status(current_user: ClerkUser = Depends(verify_clerk_session)
         status = await use_case.get_service_status(current_user.user_id)
         return JSONResponse(status_code=200, content={"service": status})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/start")
@@ -128,7 +134,8 @@ async def start_services(current_user: ClerkUser = Depends(verify_clerk_session)
         await use_case.start_services(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/stop")
@@ -137,7 +144,8 @@ async def stop_services(current_user: ClerkUser = Depends(verify_clerk_session))
         await use_case.stop_services(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Automatización pausada"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/broadcasts")
@@ -149,7 +157,8 @@ async def list_broadcasts(
         data = await use_case.list_broadcasts(current_user.user_id, broadcast_status)
         return JSONResponse(status_code=200, content={"broadcasts": data})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/live-chat")
@@ -158,7 +167,8 @@ async def live_chat(current_user: ClerkUser = Depends(verify_clerk_session)):
         service_status = await use_case.get_service_status(current_user.user_id)
         return JSONResponse(status_code=200, content={"service": service_status})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.get("/stats")
@@ -176,7 +186,8 @@ async def stats(current_user: ClerkUser = Depends(verify_clerk_session)):
                     "message": "No hay tokens de YouTube guardados para este usuario",
                 },
             )
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.put("/broadcast")
@@ -188,7 +199,8 @@ async def update_broadcast(
         data = await use_case.update_broadcast(current_user.user_id, payload)
         return JSONResponse(status_code=200, content={"broadcast": data})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.post("/chat")
@@ -204,7 +216,8 @@ async def send_chat_message(
         )
         return JSONResponse(status_code=200, content={"message": data})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.put("/transition")
@@ -220,7 +233,8 @@ async def transition_broadcast(
         )
         return JSONResponse(status_code=200, content={"broadcast": data})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)
 
 
 @router.delete("/auth")
@@ -229,4 +243,5 @@ async def logout_youtube(current_user: ClerkUser = Depends(verify_clerk_session)
         await use_case.logout(current_user.user_id)
         return JSONResponse(status_code=200, content={"message": "Sesión de YouTube cerrada"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="youtube")
+        return JSONResponse(status_code=status_code, content=body)

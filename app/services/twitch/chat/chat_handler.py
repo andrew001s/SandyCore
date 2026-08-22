@@ -6,12 +6,11 @@ import app.services.twitch.auth.auth as auth
 from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.use_cases.chat_use_case import ChatUseCase
-from app.services.client_settings import load_effective_settings
+from app.services.client_settings import load_effective_settings, resolve_chunk_size
 from app.services.gemini import check_message, response_sandy
 from app.services.moderator import check_banned_words
 
 DEFAULT_BOTS = ["streamlabs", "streamelements", "nightbot"]
-CHUNK_SIZE = 1
 
 chat_use_case = ChatUseCase(WebsocketAdapter())
 
@@ -92,15 +91,16 @@ class TwitchChatSession:
         broadcaster = await auth.get_profile_users(bot=False, user_id=self.user_id)
         return broadcaster.id
 
-    async def _reply(self, msg: ChatMessage, response: str) -> None:
+    async def _reply(
+        self, msg: ChatMessage, response: str, batch: list[str]
+    ) -> None:
         voice_enabled = bool(self.feature_flags.get("voice_replies", True))
         if not voice_enabled:
             await self.chat.send_message(msg.room.name, response)
             return
-        await chat_use_case.handle_message(
-            msg.user.name,
-            msg.text,
+        await chat_use_case.process_chunk(
             response,
+            messages=batch,
             user_id=self.user_id,
             voice_enabled=voice_enabled,
         )
@@ -137,19 +137,22 @@ class TwitchChatSession:
             return
 
         self.chunk_message.append(f"{msg.user.name}: {msg.text}")
-        if len(self.chunk_message) < CHUNK_SIZE:
+        chunk_size = resolve_chunk_size(settings)
+        if len(self.chunk_message) < chunk_size:
             return
 
-        message_str = self.chunk_message[-1]
+        # El lote se vacía ANTES de llamar a la IA: si la llamada falla o llegan
+        # mensajes mientras está en vuelo, no se mezclan con el lote actual ni
+        # se quedan atascados esperando al siguiente.
+        batch = list(self.chunk_message)
+        self.chunk_message.clear()
+
         try:
-            response = await response_sandy(message_str, self.user_id)
+            response = await response_sandy("\n".join(batch), self.user_id)
         except Exception as exc:
             print(f"[CHAT ERROR] No se pudo generar respuesta: {repr(exc)}")
             response = "No pude responder en este momento."
-        try:
-            await self._reply(msg, response)
-        finally:
-            self.chunk_message.clear()
+        await self._reply(msg, response, batch)
 
     async def send(self, message: str) -> bool:
         if self.chat is None:

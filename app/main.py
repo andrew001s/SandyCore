@@ -14,6 +14,7 @@ from app.controllers.http.settings_router import router as settings_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
 from app.controllers.websocket.websocket_server import handle_websocket
+from app.domain.errors import error_payload
 
 tags_metadata = [
     {"name": "Health", "description": "Verificación de estado de la API."},
@@ -68,4 +69,5 @@ async def get_profile(
         profile = await TwitchService().get_profile(current_user.user_id, bot)
         return JSONResponse(status_code=200, content={"profile": profile})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        status_code, body = error_payload(e, provider="twitch")
+        return JSONResponse(status_code=status_code, content=body)
