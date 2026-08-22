@@ -136,7 +136,7 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
         await register_activity_and_monitor(user_id)
         return response
     elif response_type == "interaccion":
-        add_to_history("shandrew:" + message, user_id)
+        add_to_history("streamer:" + message, user_id)
         response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
         add_to_history("bot:" + response, user_id)
         await register_activity_and_monitor(user_id)
@@ -145,7 +145,7 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
     print(
         f"[GEMINI] response_assist.type inesperado: {getattr(response_assist, 'type', None)!r}"
     )
-    add_to_history("shandrew:" + message, user_id)
+    add_to_history("streamer:" + message, user_id)
     response = await client_gemini(message, prompts["vtuber_shandrew"], user_id)
     add_to_history("bot:" + response, user_id)
     await register_activity_and_monitor(user_id)
