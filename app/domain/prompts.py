@@ -5,6 +5,15 @@ from typing import Any
 
 from app.core.personality import load_personality_template
 
+PLAIN_TEXT_RULES = """
+Formato obligatorio de la respuesta (se lee en voz alta):
+- texto corrido, en una sola línea, sin saltos de línea
+- nada de markdown: ni asteriscos, ni guiones bajos, ni almohadillas, ni comillas de código, ni listas
+- nada de acciones ni gestos narrados entre asteriscos, del tipo *se encoge de hombros*
+- nada de rayas ni guiones largos; usa coma o punto
+- solo la frase que diría el personaje en voz alta
+"""
+
 BASE_PROMPT_MOD = """
 Clasifica el mensaje como PERMITIDO o NO PERMITIDO.
 PERMITIDO: lenguaje fuerte sin intención ofensiva, humor, críticas sin ataque personal.
@@ -199,6 +208,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
         part
         for part in [
             BASE_PROMPT_VTUBER.strip(),
+            PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Responde en nombre del personaje usando el perfil anterior y el contexto de la conversación.",
         ]
@@ -208,6 +218,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
         part
         for part in [
             BASE_PROMPT_VTUBER_SHANDREW.strip(),
+            PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Si el creador del canal está involucrado, usa cercanía, memoria y contexto, pero sin perder naturalidad.",
         ]
@@ -217,6 +228,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
         part
         for part in [
             BASE_PROMPT_VTUBER_REWARDS.strip(),
+            PLAIN_TEXT_RULES.strip(),
             persona_block,
         ]
         if part
@@ -225,6 +237,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
         part
         for part in [
             BASE_PROMPT_VTUBER_EVENTS.strip(),
+            PLAIN_TEXT_RULES.strip(),
             persona_block,
         ]
         if part

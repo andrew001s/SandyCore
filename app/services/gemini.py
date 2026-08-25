@@ -1,4 +1,5 @@
 from collections import deque
+import re
 import unicodedata
 from typing import Any
 
@@ -79,6 +80,41 @@ def persona_name(settings: dict[str, Any] | None) -> str:
     return str(name).strip() if name else ""
 
 
+# La respuesta se lee en voz alta: no debe traer markdown, saltos de línea ni
+# roleo de acciones entre asteriscos. El prompt ya lo pide, pero los modelos lo
+# ignoran, así que se limpia de forma determinista.
+_BACKTICKS = re.compile(r"`+")
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_LINE_PREFIX = re.compile(r"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+|\d+[.)][ \t]+)")
+_BOLD = re.compile(r"\*\*([^*]+)\*\*|__([^_]+)__")
+_ROLEPLAY = re.compile(r"\*[^*\n]+\*")
+_ITALIC = re.compile(r"_([^_\n]+)_")
+_DASHES = re.compile(r"[\u2014\u2013\u2015]")
+_LEFTOVER = re.compile(r"[*_`#>]")
+_SPACE_BEFORE_PUNCT = re.compile(r"\s+([,.;:!?…])")
+_WHITESPACE = re.compile(r"\s+")
+
+
+def strip_formatting(text: str) -> str:
+    """Deja la respuesta como texto plano apto para leer en voz alta."""
+    if not text:
+        return ""
+
+    cleaned = _BACKTICKS.sub("", text)
+    cleaned = _MD_LINK.sub(r"\1", cleaned)
+    cleaned = _LINE_PREFIX.sub("", cleaned)
+    # El énfasis conserva la palabra; la acción entre asteriscos simples es
+    # roleo y se elimina entera.
+    cleaned = _BOLD.sub(lambda m: m.group(1) or m.group(2), cleaned)
+    cleaned = _ROLEPLAY.sub(" ", cleaned)
+    cleaned = _ITALIC.sub(r"\1", cleaned)
+    cleaned = _DASHES.sub(" ", cleaned)
+    cleaned = _LEFTOVER.sub("", cleaned)
+    cleaned = _WHITESPACE.sub(" ", cleaned)
+    cleaned = _SPACE_BEFORE_PUNCT.sub(r"\1", cleaned)
+    return cleaned.strip(" ,;:-")
+
+
 def _sanitize_reply(response: str, name: str | None = None) -> str:
     """Recorta el turno extra que el modelo a veces añade a su propia respuesta."""
     text = (response or "").strip()
@@ -101,7 +137,7 @@ def _sanitize_reply(response: str, name: str | None = None) -> str:
         idx = lowered.find(marker.lower())
         if idx > 0:
             cut = min(cut, idx)
-    return text[:cut].strip()
+    return strip_formatting(text[:cut])
 
 
 def build_stop_sequences(name: str | None = None) -> list[str]:
