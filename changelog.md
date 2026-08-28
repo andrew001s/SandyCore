@@ -1,3 +1,9 @@
+## v2.5.0 (2026-08-28)
+
+### Feat
+
+- **gemini**: ✨ actualizar el modelo Gemini a 3.7-flash en la configuración
+
 ## v2.4.0 (2026-08-28)
 
 ### Feat
