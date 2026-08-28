@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.security.stream_token import create_stream_token, verify_stream_token
 from app.controllers.websocket.websocket_server import manager
+from app.services.session_shutdown import shutdown_all_services
 
 router = APIRouter(tags=["Realtime"])
 
@@ -71,3 +72,18 @@ async def stream_events(request: Request, token: str = Query(...)):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/services/shutdown")
+async def shutdown_services(token: str = Query(...)):
+    """Apaga los servicios del usuario al cerrar o recargar la página.
+
+    Se autentica con el token de stream por query, no con la cabecera de Clerk,
+    porque el navegador lo llama con `sendBeacon` y ahí no se pueden poner
+    cabeceras. Es el mismo token firmado que ya usa `/stream`.
+    """
+    payload = verify_stream_token(token)
+    user_id = str(payload["sub"])
+    print(f"[SHUTDOWN] La página de {user_id} se cerró: deteniendo servicios")
+    detenidos = await shutdown_all_services(user_id)
+    return JSONResponse(status_code=200, content={"stopped": detenidos})

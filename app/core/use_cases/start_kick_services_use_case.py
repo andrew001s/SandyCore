@@ -1,6 +1,5 @@
 from app.adapters.kick_services import KickService
-from app.services.kick.lifecycle import register_activity_and_monitor, stop_monitor, set_running
-from app.services.client_settings import load_effective_settings
+from app.services.kick.lifecycle import set_running
 
 
 class StartKickServicesCase:
@@ -13,11 +12,5 @@ class StartKickServicesCase:
                 bot, user_id
             )
             await set_running(user_id, True)
-            settings = await load_effective_settings(user_id)
-            service_mode = str(settings.get("service_mode") or "manual").lower()
-            if service_mode == "hybrid":
-                await register_activity_and_monitor(user_id)
-            else:
-                await stop_monitor(user_id)
         except Exception as e:
             print(f"Error al iniciar servicios de Kick: {e}")

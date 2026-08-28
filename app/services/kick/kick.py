@@ -1,5 +1,5 @@
 import app.services.kick.auth.auth as auth
-from app.services.kick.lifecycle import disarm, stop_services
+from app.services.kick.lifecycle import stop_services
 
 
 async def get_user_profile(bot: bool = False, user_id=None) -> dict:
@@ -14,7 +14,6 @@ async def get_user_profile(bot: bool = False, user_id=None) -> dict:
 
 async def close_kick(user_id=None):
     await stop_services(user_id)
-    await disarm(user_id)
 
 
 async def logout_kick(user_id=None):

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.core.runtime import get_active_user_id
 from app.core.ports.ai_port import AIPort
 from app.services.client_settings import load_effective_settings
-from app.services.twitch.lifecycle import register_activity_and_monitor
+from app.services.twitch.lifecycle import mark_activity
 from app.domain.prompts import build_prompt_bundle, resolve_persona_profile
 
 
@@ -336,7 +336,7 @@ async def response_sandy(message: str, user_id: str | None = None) -> str:
     prompts = build_prompt_bundle(settings)
     response = await client_gemini(message, prompts["vtuber"], user_id, persona_name(settings))
     _record_exchange("user:" + message, response, user_id)
-    await register_activity_and_monitor(user_id)
+    await mark_activity(user_id)
     return response
 
 
@@ -360,17 +360,17 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
             user_id=user_id,
         )
         response = await client_gemini(message, prompts["vtuber"], user_id, persona_name(settings))
-        await register_activity_and_monitor(user_id)
+        await mark_activity(user_id)
         return response
     elif response_type == "statistics":
         stadistics = await get_stream_info(user_id)
         response = await client_gemini(str(stadistics), prompts["statistics"], user_id, persona_name(settings))
-        await register_activity_and_monitor(user_id)
+        await mark_activity(user_id)
         return response
     elif response_type == "interaccion":
         response = await client_gemini(message, prompts["vtuber_shandrew"], user_id, persona_name(settings))
         _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
-        await register_activity_and_monitor(user_id)
+        await mark_activity(user_id)
         return response
 
     print(
@@ -378,7 +378,7 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
     )
     response = await client_gemini(message, prompts["vtuber_shandrew"], user_id, persona_name(settings))
     _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
-    await register_activity_and_monitor(user_id)
+    await mark_activity(user_id)
     return response
 
 
@@ -447,7 +447,7 @@ async def stream_sandy_shandrew(
         _record_exchange(
             "streamer:" + message, streamer.full_text, user_id, bot_prefix="bot:"
         )
-    await register_activity_and_monitor(user_id)
+    await mark_activity(user_id)
 
 
 async def check_message(message: str, user_id: str | None = None) -> str:
@@ -461,7 +461,7 @@ async def response_gemini_rewards(message: str, user_id: str | None = None) -> s
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
     response = await client_gemini(message, prompts["rewards"], user_id, persona_name(settings))
-    await register_activity_and_monitor(user_id)
+    await mark_activity(user_id)
     return response
 
 
@@ -469,5 +469,5 @@ async def response_gemini_events(message: str, user_id: str | None = None) -> st
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
     response = await client_gemini(message, prompts["events"], user_id, persona_name(settings))
-    await register_activity_and_monitor(user_id)
+    await mark_activity(user_id)
     return response

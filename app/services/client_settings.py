@@ -37,9 +37,6 @@ SETTINGS_KEYS = {
     "custom_banned_symbols",
     "custom_banned_links",
     "service_mode",
-    "auto_start_on_live",
-    "auto_stop_on_offline",
-    "idle_timeout_minutes",
     "chunk_size",
 }
 
@@ -111,12 +108,9 @@ def _defaults() -> dict[str, Any]:
         "custom_banned_words": [],
         "custom_banned_symbols": [],
         "custom_banned_links": [],
-        "service_mode": os.getenv("SERVICE_MODE", "manual"),
-        "auto_start_on_live": os.getenv("AUTO_START_ON_LIVE", "false").lower()
-        == "true",
-        "auto_stop_on_offline": os.getenv("AUTO_STOP_ON_OFFLINE", "true").lower()
-        == "true",
-        "idle_timeout_minutes": int(os.getenv("IDLE_TIMEOUT_MINUTES", "60")),
+        # Solo existe el modo manual: el híbrido arrancaba y paraba servicios
+        # por su cuenta y quemaba tokens sin que el cliente lo decidiera.
+        "service_mode": "manual",
         "chunk_size": int(os.getenv("CHUNK_SIZE", str(DEFAULT_CHUNK_SIZE))),
     }
 
@@ -137,6 +131,8 @@ def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
                 else:
                     payload[key] = settings[key]
     payload["tts_provider"] = normalize_tts_provider(payload.get("tts_provider"))
+    # Se ignora lo que hubiera guardado: ya no hay otro modo.
+    payload["service_mode"] = "manual"
     return decrypt_secret_map(payload, SENSITIVE_SETTING_KEYS)
 
 
@@ -185,6 +181,7 @@ async def save_effective_settings(
         {key: value for key, value in settings.items() if key in SETTINGS_KEYS}
     )
     current["tts_provider"] = normalize_tts_provider(current.get("tts_provider"))
+    current["service_mode"] = "manual"
     await upsert_user_settings(
         owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)
     )
