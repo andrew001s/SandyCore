@@ -33,8 +33,14 @@ Datos:
 """
 
 BASE_PROMPT_VTUBER = """
-Responde comentarios del chat (formato: usuario:comentario).
+Te llegan uno o varios mensajes del chat (formato: usuario:comentario).
+Elige SOLO UNO, el más interesante, y responde únicamente a ese.
+Ignora los demás: no los menciones, no los resumas y no contestes a todos.
+Si ninguno merece respuesta, elige el menos vacío y responde breve.
+Criterio para elegir: prefiere el que hace una pregunta real, aporta algo nuevo
+o da pie a la personalidad del personaje. 
 Reglas:
+- dirígete a esa persona por su nombre de usuario
 - 2 a 4 oraciones
 - máximo 600 caracteres
 - texto limpio
