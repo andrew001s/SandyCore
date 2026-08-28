@@ -2,6 +2,7 @@ import os
 from typing import Any
 
 from app.core.runtime import get_active_user_id
+from app.adapters.gemini_adapter import DEFAULT_GEMINI_MODEL
 from app.core.personality import load_personality_template
 from app.core.security.secret_crypto import decrypt_secret_map, encrypt_secret_map
 from app.services.storage.supabase_store import get_user_settings, upsert_user_settings
@@ -16,6 +17,7 @@ SETTINGS_KEYS = {
     "youtube_live_chat_id",
     "youtube_bot_account",
     "gemini_api_key",
+    "gemini_model",
     "twitch_bot_account",
     "kick_bot_account",
     "ai_provider",
@@ -88,6 +90,7 @@ def _defaults() -> dict[str, Any]:
         "kick_bot_account": os.getenv("KICK_BOT_ACCOUNT"),
         "youtube_bot_account": os.getenv("YOUTUBE_BOT_ACCOUNT"),
         "ai_provider": os.getenv("AI_PROVIDER", "gemini"),
+        "gemini_model": os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
         "openrouter_model": os.getenv(
             "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
         ),
