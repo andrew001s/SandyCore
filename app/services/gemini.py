@@ -47,6 +47,14 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
     if cached is not None:
         return cached
 
+    if provider == "local":
+        # El modelo vive en la máquina del usuario: la inferencia que arranca en
+        # el backend se delega en su navegador por el bus SSE. No se cachea
+        # porque va atado al usuario.
+        from app.adapters.browser_relay_adapter import BrowserRelayAdapter
+
+        return BrowserRelayAdapter(user_id or get_active_user_id())
+
     if provider == "openrouter":
         openrouter_api_key = settings.get("openrouter_api_key")
         if not openrouter_api_key:

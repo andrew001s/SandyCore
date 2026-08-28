@@ -9,7 +9,9 @@ from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
 from app.domain.errors import error_payload
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
+from app.models.ai_relay_models import AiRelayResultModel
 from app.models.message_model import MessageModel
+from app.services import ai_relay
 from app.services.gemini import build_local_context, stream_sandy_shandrew
 
 router = APIRouter(tags=["AI"])
@@ -93,6 +95,32 @@ async def local_ai_context(current_user: ClerkUser = Depends(verify_clerk_sessio
     try:
         contexto = await build_local_context(current_user.user_id)
         return JSONResponse(status_code=200, content={"context": contexto})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/result")
+async def local_relay_result(
+    payload: AiRelayResultModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """El navegador entrega el resultado de su modelo local.
+
+    La petición la abrió el backend por el canal SSE de este mismo usuario; aquí
+    solo se desbloquea a quien estaba esperando. Que ya no espere nadie no es un
+    error: pudo vencer el plazo mientras el modelo generaba.
+    """
+    try:
+        if payload.error_code or payload.error_message:
+            entregado = ai_relay.fail(
+                payload.request_id, payload.error_code, payload.error_message
+            )
+        else:
+            entregado = ai_relay.resolve(payload.request_id, payload.text or "")
+        return JSONResponse(
+            status_code=200,
+            content={"delivered": entregado, "pending": ai_relay.pending_count()},
+        )
     except Exception as exc:
         status_code, body = error_payload(exc)
         return JSONResponse(status_code=status_code, content=body)
