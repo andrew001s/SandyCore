@@ -1,3 +1,9 @@
+## v2.4.0 (2026-08-28)
+
+### Feat
+
+- **gemini**: ✨ agregar soporte para el modelo Gemini en la configuración del cliente
+
 ## v2.3.0 (2026-08-28)
 
 ### Feat
