@@ -1,7 +1,7 @@
 from collections import deque
 import re
 import unicodedata
-from typing import Any
+from typing import Any, AsyncIterator
 
 from pydantic import BaseModel
 
@@ -158,6 +158,111 @@ def build_stop_sequences(name: str | None = None) -> list[str]:
     return unicas
 
 
+# Corte seguro para emitir: fin de frase. Un token suelto no vale porque
+# `strip_formatting` necesita ver la marca completa (`*acción*`, `**negrita**`);
+# partirla en dos trozos la volvería irreconocible y se colaría en la salida.
+# El lookahead exige espacio y NO fin de cadena: en streaming el final del
+# buffer no es el final del texto, y un punto que caiga justo en el borde del
+# fragmento (p. ej. dentro de "x.com") se tomaría por fin de frase. Lo que
+# quede sin cerrar se emite igualmente en `close()`.
+_SENTENCE_BOUNDARY = re.compile(r"[.!?…]+[\"'\)\]]*(?=\s)")
+MAX_STREAM_SEGMENT = 240
+
+
+class ReplyStreamer:
+    """Va limpiando la respuesta según llega del proveedor.
+
+    Aplica las mismas garantías que `_sanitize_reply`: corta el turno que el
+    modelo se inventa y deja texto plano. Emite por frases: el primer trozo sale
+    en cuanto termina la primera frase, sin esperar a la respuesta completa.
+    """
+
+    def __init__(self, name: str | None = None):
+        self._markers = build_stop_sequences(name)
+        self._pending = ""
+        self._parts: list[str] = []
+        self._done = False
+
+    @property
+    def full_text(self) -> str:
+        """Concatenar todo lo emitido da exactamente esto."""
+        return "".join(self._parts)
+
+    def feed(self, delta: str) -> str:
+        if self._done or not delta:
+            return ""
+        self._pending += delta
+        self._strip_leading_marker()
+
+        cut = self._turn_marker_index()
+        if cut is not None:
+            head, self._pending = self._pending[:cut], ""
+            self._done = True
+            return self._emit(head)
+
+        boundary = self._safe_boundary()
+        if boundary is None:
+            return ""
+        head, self._pending = self._pending[:boundary], self._pending[boundary:]
+        return self._emit(head)
+
+    def close(self) -> str:
+        if self._done or not self._pending:
+            return ""
+        head, self._pending = self._pending, ""
+        self._done = True
+        return self._emit(head)
+
+    # -- interno ------------------------------------------------------------
+
+    def _emit(self, text: str) -> str:
+        cleaned = strip_formatting(text)
+        if not cleaned:
+            return ""
+        piece = cleaned if not self._parts else f" {cleaned}"
+        self._parts.append(piece)
+        return piece
+
+    def _strip_leading_marker(self) -> None:
+        if self._parts:
+            return
+        stripped = self._pending.lstrip()
+        lowered = stripped.lower()
+        for marker in self._markers:
+            if lowered.startswith(marker.lower()):
+                self._pending = stripped[len(marker) :].lstrip()
+                return
+
+    def _turn_marker_index(self) -> int | None:
+        lowered = self._pending.lower()
+        minimo = 0 if self._parts else 1
+        mejor = None
+        for marker in self._markers:
+            idx = lowered.find(marker.lower())
+            if idx >= minimo:
+                mejor = idx if mejor is None else min(mejor, idx)
+        return mejor
+
+    def _safe_boundary(self) -> int | None:
+        # No se corta dentro de una marca sin cerrar: una acción entre
+        # asteriscos o un enlace markdown partido dejarían de reconocerse.
+        for match in reversed(list(_SENTENCE_BOUNDARY.finditer(self._pending))):
+            if self._is_balanced(self._pending[: match.end()]):
+                return match.end()
+        if len(self._pending) >= MAX_STREAM_SEGMENT:
+            corte = self._pending.rfind(" ", 0, MAX_STREAM_SEGMENT)
+            return corte if corte > 0 else MAX_STREAM_SEGMENT
+        return None
+
+    @staticmethod
+    def _is_balanced(text: str) -> bool:
+        return (
+            text.count("*") % 2 == 0
+            and text.count("[") == text.count("]")
+            and text.count("(") == text.count(")")
+        )
+
+
 async def client_gemini(
     message: str,
     prompt: str,
@@ -271,6 +376,74 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
     _record_exchange("streamer:" + message, response, user_id, bot_prefix="bot:")
     await register_activity_and_monitor(user_id)
     return response
+
+
+async def stream_sandy_shandrew(
+    message: str, user_id: str | None = None
+) -> AsyncIterator[str]:
+    """Versión en streaming de `response_sandy_shandrew`.
+
+    La clasificación previa no se puede transmitir (necesita el JSON completo),
+    así que se resuelve primero y solo se emite en streaming la generación final,
+    que es la parte lenta.
+    """
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    prompts = build_prompt_bundle(settings)
+    name = persona_name(settings)
+
+    response_assist = await client_gemini_order(
+        message, prompt=prompts["assist"], user_id=user_id
+    )
+    response_type = _normalize_label(getattr(response_assist, "type", None))
+    from app.services.twitch.events.moderation_handler import (
+        get_stream_info,
+        moderator_actions,
+    )
+
+    entrada = message
+    clave_prompt = "vtuber_shandrew"
+    registrar = True
+
+    if response_type == "orden":
+        await moderator_actions(
+            title=response_assist.order_objective,
+            name=response_assist.order_name,
+            user_id=user_id,
+        )
+        clave_prompt = "vtuber"
+        registrar = False
+    elif response_type == "statistics":
+        entrada = str(await get_stream_info(user_id))
+        clave_prompt = "statistics"
+        registrar = False
+    elif response_type != "interaccion":
+        print(
+            f"[GEMINI] response_assist.type inesperado: {getattr(response_assist, 'type', None)!r}"
+        )
+
+    client = await _get_ai_client(user_id)
+    context = generate_context(user_id)
+    # Igual que en client_gemini: el mensaje no se repite dentro del prompt.
+    full_prompt = f"{prompts[clave_prompt]}\nHistorial conversacion: {context}"
+
+    streamer = ReplyStreamer(name)
+    async for delta in client.generate_text_stream(
+        entrada, full_prompt, build_stop_sequences(name)
+    ):
+        piece = streamer.feed(delta)
+        if piece:
+            yield piece
+    tail = streamer.close()
+    if tail:
+        yield tail
+
+    if registrar:
+        # El historial solo se toca si hubo respuesta, igual que en el modo
+        # no-streaming: un fallo a mitad no debe dejar el turno sin contestar.
+        _record_exchange(
+            "streamer:" + message, streamer.full_text, user_id, bot_prefix="bot:"
+        )
+    await register_activity_and_monitor(user_id)
 
 
 async def check_message(message: str, user_id: str | None = None) -> str:
