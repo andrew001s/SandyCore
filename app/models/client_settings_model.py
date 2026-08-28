@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class ClientSettingsModel(BaseModel):
     twitch_channel: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    gemini_model: Optional[str] = None
     twitch_bot_account: Optional[str] = None
     youtube_bot_account: Optional[str] = None
     ai_provider: Optional[str] = None

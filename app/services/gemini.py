@@ -42,6 +42,7 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
         provider,
         str(settings.get("gemini_api_key") or settings.get("openrouter_api_key") or ""),
         str(settings.get("openrouter_model") or ""),
+        str(settings.get("gemini_model") or ""),
     )
     cached = _ai_client_cache.get(cache_key)
     if cached is not None:
@@ -68,9 +69,12 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
             model=settings["openrouter_model"],
         )
     else:
-        from app.adapters.gemini_adapter import GeminiAdapter
+        from app.adapters.gemini_adapter import DEFAULT_GEMINI_MODEL, GeminiAdapter
 
-        client = GeminiAdapter(api_key=settings["gemini_api_key"])
+        client = GeminiAdapter(
+            api_key=settings["gemini_api_key"],
+            model=settings.get("gemini_model") or DEFAULT_GEMINI_MODEL,
+        )
 
     _ai_client_cache[cache_key] = client
     return client

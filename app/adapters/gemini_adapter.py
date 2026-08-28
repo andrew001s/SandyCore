@@ -4,6 +4,11 @@ import traceback
 from pydantic import BaseModel
 
 from app.core.ports.ai_port import AIPort
+
+# Se define aquí y se expone para que el resto del backend no repita la cadena.
+# El valor efectivo sale de la configuración del usuario (ver `_get_ai_client`),
+# así que cambiar de modelo no exige un despliegue.
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash"
 from app.domain.ai_errors import (
     CONTENT_BLOCKED,
     EMPTY_RESPONSE,
@@ -34,7 +39,7 @@ def _extract_text(response) -> str | None:
 
 
 class GeminiAdapter(AIPort):
-    def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str, model: str = DEFAULT_GEMINI_MODEL):
         from google import genai
 
         self.client = genai.Client(api_key=api_key)
