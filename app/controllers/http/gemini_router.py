@@ -7,9 +7,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from app.adapters.gemini_services import GeminiServices
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
+from app.domain.errors import error_payload
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
 from app.models.message_model import MessageModel
-from app.services.gemini import stream_sandy_shandrew
+from app.services.gemini import build_local_context, stream_sandy_shandrew
 
 router = APIRouter(tags=["AI"])
 
@@ -79,3 +80,19 @@ async def gemini_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/ai/local/context")
+async def local_ai_context(current_user: ClerkUser = Depends(verify_clerk_session)):
+    """Prompts y personalidad para un modelo local.
+
+    El navegador llama directo a su modelo, así que necesita el system prompt
+    que el backend usa con Gemini y OpenRouter: reglas base, formato de salida,
+    perfil del personaje e historial de la conversación.
+    """
+    try:
+        contexto = await build_local_context(current_user.user_id)
+        return JSONResponse(status_code=200, content={"context": contexto})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)

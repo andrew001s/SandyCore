@@ -446,6 +446,47 @@ async def stream_sandy_shandrew(
     await register_activity_and_monitor(user_id)
 
 
+async def build_local_context(user_id: str | None = None) -> dict[str, Any]:
+    """Prompts y personalidad listos para un modelo que corre fuera del backend.
+
+    Con proveedor local el navegador habla directo con el modelo del usuario, así
+    que el backend no puede inyectar nada por su cuenta. Aquí entrega lo que solo
+    él conoce —los prompts base, las reglas de formato, el perfil del personaje y
+    el historial— ya compuesto, para que el cliente lo ponga tal cual en el
+    system prompt.
+
+    El historial cambia en cada turno: pídelo antes de cada mensaje si quieres
+    que el modelo tenga memoria de la conversación.
+    """
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    prompts = build_prompt_bundle(settings)
+    name = persona_name(settings)
+    history = generate_context(user_id)
+
+    def compose(clave: str) -> str:
+        # Mismo formato que usa `client_gemini` para los proveedores en la nube,
+        # para que el modelo local reciba exactamente lo mismo.
+        return f"{prompts[clave]}\nHistorial conversacion: {history}"
+
+    return {
+        "persona_name": name,
+        "stop": build_stop_sequences(name),
+        "history": history,
+        # `system_prompt` es el que necesita el dictáfono: el creador del canal
+        # hablándole a la VTuber. Los demás quedan disponibles por si el cliente
+        # cubre otros casos.
+        "system_prompt": compose("vtuber_shandrew"),
+        "prompts": {
+            "vtuber": compose("vtuber"),
+            "vtuber_shandrew": compose("vtuber_shandrew"),
+            "statistics": compose("statistics"),
+            "rewards": compose("rewards"),
+            "events": compose("events"),
+            "assist": prompts["assist"],
+        },
+    }
+
+
 async def check_message(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
