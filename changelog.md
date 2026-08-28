@@ -1,3 +1,9 @@
+## v2.3.0 (2026-08-28)
+
+### Feat
+
+- **streaming**: ✨ agregar soporte para generación de texto en streaming en Gemini y OpenRouter
+
 ## v2.2.1 (2026-08-25)
 
 ### Fix
