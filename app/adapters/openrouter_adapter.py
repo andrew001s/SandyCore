@@ -147,6 +147,42 @@ class OpenRouterAdapter(AIPort):
         print(f"[OPENROUTER] Respuesta ({len(result)} chars): {result[:200]}")
         return result
 
+    async def generate_text_stream(
+        self,
+        message: str,
+        system_instruction: str,
+        stop: list[str] | None = None,
+    ):
+        start = time.perf_counter()
+        print(f"[OPENROUTER] Streaming desde {self.model}...")
+        stop_sequences = [s for s in (stop or []) if s][: self.MAX_STOP_SEQUENCES]
+        extra = {"stop": stop_sequences} if stop_sequences else {}
+        recibido = 0
+
+        try:
+            stream = await self.client.chat.completions.create(
+                model=self.model,
+                messages=self._messages(message, system_instruction),
+                stream=True,
+                **extra,
+            )
+            async for event in stream:
+                choices = getattr(event, "choices", None) or []
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                texto = getattr(delta, "content", None) if delta else None
+                if texto:
+                    recibido += len(texto)
+                    yield texto
+        except Exception as exc:
+            error = classify_ai_error(exc, provider="openrouter", model=self.model)
+            print(f"[OPENROUTER] ERROR en streaming: {error!r}")
+            raise error from exc
+
+        elapsed = time.perf_counter() - start
+        print(f"[OPENROUTER] Stream completo en {elapsed:.2f}s ({recibido} chars)")
+
     async def generate_structured(
         self, content: str, response_model: type[BaseModel]
     ) -> BaseModel:

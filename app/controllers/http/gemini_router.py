@@ -1,12 +1,15 @@
+import json
+
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.adapters.gemini_services import GeminiServices
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
 from app.models.message_model import MessageModel
+from app.services.gemini import stream_sandy_shandrew
 
 router = APIRouter(tags=["AI"])
 
@@ -35,3 +38,44 @@ async def gemini_response_sandy_shandrew(
         return JSONResponse(
             status_code=error.http_status, content={"error": error.to_payload()}
         )
+
+
+def _sse(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@router.post("/gemini/stream")
+async def gemini_stream(
+    message_payload: MessageModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """Misma respuesta que POST /gemini, pero entregada según se genera.
+
+    Eventos SSE:
+      delta {"text": "..."}   fragmento listo para mostrar o sintetizar
+      done  {"message": "..."} texto completo (la concatenación de los deltas)
+      error {"code", "message", ...}  mismo contrato que el endpoint no-streaming
+    """
+
+    async def event_generator():
+        partes: list[str] = []
+        try:
+            async for piece in stream_sandy_shandrew(
+                message_payload.message, current_user.user_id
+            ):
+                partes.append(piece)
+                yield _sse("delta", {"text": piece})
+            yield _sse("done", {"message": "".join(partes)})
+        except AIProviderError as exc:
+            print(f"[GEMINI STREAM] {exc!r}")
+            yield _sse("error", exc.to_payload())
+        except Exception as exc:
+            error = classify_ai_error(exc)
+            if error.code == UNKNOWN:
+                print(f"[GEMINI STREAM] error no clasificado: {exc!r}")
+            yield _sse("error", error.to_payload())
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

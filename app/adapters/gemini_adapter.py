@@ -104,6 +104,41 @@ class GeminiAdapter(AIPort):
         print(f"[GEMINI] Respuesta en {elapsed:.2f}s ({len(result)} chars): {result[:200]}")
         return result
 
+    async def generate_text_stream(
+        self,
+        message: str,
+        system_instruction: str,
+        stop: list[str] | None = None,
+    ):
+        from google.genai import types
+
+        start = time.perf_counter()
+        print(f"[GEMINI] Streaming desde {self.model}...")
+        stop_sequences = [s for s in (stop or []) if s][: self.MAX_STOP_SEQUENCES]
+        recibido = 0
+
+        try:
+            stream = await self.client.aio.models.generate_content_stream(
+                model=self.model,
+                contents=message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    stop_sequences=stop_sequences or None,
+                ),
+            )
+            async for chunk in stream:
+                texto = getattr(chunk, "text", None)
+                if texto:
+                    recibido += len(texto)
+                    yield texto
+        except Exception as exc:
+            error = classify_ai_error(exc, provider="gemini", model=self.model)
+            print(f"[GEMINI] ERROR en streaming: {error!r}")
+            raise error from exc
+
+        elapsed = time.perf_counter() - start
+        print(f"[GEMINI] Stream completo en {elapsed:.2f}s ({recibido} chars)")
+
     async def generate_structured(
         self, content: str, response_model: type[BaseModel]
     ) -> BaseModel:
