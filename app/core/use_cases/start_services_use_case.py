@@ -8,26 +8,29 @@ class StartServicesCase:
         self.twitch_service = twitch_service
 
     async def execute(self, user_id: str, bot: bool = False):
-        try:
-            twitch, twitch_bot, twitch_user_id = await self.twitch_service.return_instance(
-                bot, user_id
+        """Arranca chat y EventSub.
+
+        Los fallos se propagan a propósito: antes se capturaban aquí y solo se
+        imprimían, así que `/start` devolvía 200 "Servicios iniciados" aunque no
+        hubiera arrancado nada y el usuario no tenía forma de enterarse.
+        """
+        twitch, twitch_bot, twitch_user_id = await self.twitch_service.return_instance(
+            bot, user_id
+        )
+        if bot:
+            await self.twitch_service.setup_chat(
+                twitch_bot, twitch_bot=twitch, user_id=user_id
             )
-            if bot:
-                await self.twitch_service.setup_chat(
-                    twitch_bot, twitch_bot=twitch, user_id=user_id
-                )
-            else:
-                await self.twitch_service.setup_chat(twitch, user_id=user_id)
+        else:
+            await self.twitch_service.setup_chat(twitch, user_id=user_id)
 
-            try:
-                await self.twitch_service.setup_eventsub(
-                    twitch, user_id, twitch_user_id
-                )
-            except EventSubError:
-                pass
-            except Exception as e:
-                print(f"Error al iniciar EventSub: {e}")
+        # EventSub sí puede fallar sin tumbar el arranque: el chat funciona igual
+        # y las suscripciones se reintentan al volver a iniciar.
+        try:
+            await self.twitch_service.setup_eventsub(twitch, user_id, twitch_user_id)
+        except EventSubError:
+            pass
+        except Exception as exc:
+            print(f"[TWITCH START] EventSub no arrancó: {repr(exc)}")
 
-            await set_running(user_id, True)
-        except Exception as e:
-            print(f"Error al iniciar servicios: {e}")
+        await set_running(user_id, True)
