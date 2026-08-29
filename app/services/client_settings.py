@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 from app.core.runtime import get_active_user_id
-from app.adapters.gemini_adapter import DEFAULT_GEMINI_MODEL
+from app.adapters.gemini_adapter import DEFAULT_GEMINI_MODEL, resolve_gemini_model
 from app.core.personality import load_personality_template
 from app.core.security.secret_crypto import decrypt_secret_map, encrypt_secret_map
 from app.services.storage.supabase_store import get_user_settings, upsert_user_settings
@@ -135,6 +135,10 @@ def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
                 else:
                     payload[key] = settings[key]
     payload["tts_provider"] = normalize_tts_provider(payload.get("tts_provider"))
+    # Un modelo retirado guardado en la cuenta deja al bot mudo entero: no falla
+    # una llamada, fallan el chat, la moderación, los eventos y las recompensas.
+    # Se corrige aquí para que lo vea todo el que lea la configuración.
+    payload["gemini_model"] = resolve_gemini_model(payload.get("gemini_model"))
     # Se ignora lo que hubiera guardado: ya no hay otro modo.
     payload["service_mode"] = "manual"
     payload["onboarding_completed"] = bool(payload.get("onboarding_completed"))

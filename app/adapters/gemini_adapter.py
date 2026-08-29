@@ -14,6 +14,36 @@ from app.core.ports.ai_port import AIPort
 # barato: gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash,
 # gemini-3.5-flash-lite, gemini-3.1-flash-lite. Los 2.0 están apagados.
 DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
+
+# Nombres que la API ya no sirve, con su reemplazo. Un modelo muerto guardado en
+# la configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
+# recompensas— y el bot se queda mudo en mitad del directo. Sustituirlo y dejarlo
+# escrito en el log es preferible a repetir el mismo 404 en bucle.
+#
+# Solo se tocan los nombres de esta lista: uno que no reconozcamos pasa tal cual,
+# para no bloquear un modelo nuevo que Google publique después.
+RETIRED_GEMINI_MODELS = {
+    # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante.
+    "gemini-3.1-flash": DEFAULT_GEMINI_MODEL,
+    # Apagados el 1 de junio de 2026.
+    "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
+    "gemini-2.0-flash-lite": DEFAULT_GEMINI_MODEL,
+    "gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
+    "gemini-1.5-pro": DEFAULT_GEMINI_MODEL,
+}
+
+
+def resolve_gemini_model(model: str | None) -> str:
+    """Nombre de modelo utilizable a partir del que haya en la configuración."""
+    elegido = (model or "").strip() or DEFAULT_GEMINI_MODEL
+    reemplazo = RETIRED_GEMINI_MODELS.get(elegido.lower())
+    if reemplazo:
+        print(
+            f"[GEMINI] El modelo '{elegido}' ya no está disponible; se usa "
+            f"'{reemplazo}'. Cámbialo en Ajustes para elegir otro."
+        )
+        return reemplazo
+    return elegido
 from app.domain.ai_errors import (
     CONTENT_BLOCKED,
     EMPTY_RESPONSE,
@@ -48,7 +78,7 @@ class GeminiAdapter(AIPort):
         from google import genai
 
         self.client = genai.Client(api_key=api_key)
-        self.model = model
+        self.model = resolve_gemini_model(model)
 
     # Gemini admite hasta 5 secuencias de parada.
     MAX_STOP_SEQUENCES = 5
