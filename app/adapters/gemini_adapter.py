@@ -14,7 +14,7 @@ from app.core.ports.ai_port import AIPort
 # solo publica la variante lite. Modelos Flash vigentes, del más capaz al más
 # barato: gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash,
 # gemini-3.5-flash-lite, gemini-3.1-flash-lite. Los 2.0 están apagados.
-DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
 
 # Nombres que la API ya no sirve, con su reemplazo. Un modelo muerto guardado en
 # la configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
@@ -28,7 +28,6 @@ RETIRED_GEMINI_MODELS = {
     # que se corrige al modelo que el usuario realmente pidió. Mandarlo al
     # modelo por defecto era peor: cambia de familia sin avisar y, en la
     # práctica, el 3.7 responde 503 por saturación donde el 3.1-lite no.
-    "gemini-3.1-flash": "gemini-3.1-flash-lite",
     # Apagados el 1 de junio de 2026.
     "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
     "gemini-2.0-flash-lite": DEFAULT_GEMINI_MODEL,
