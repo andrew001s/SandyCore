@@ -52,10 +52,16 @@ class BrowserRelayAdapter(AIPort):
         system_instruction: str,
         stop: list[str] | None = None,
     ):
-        # El puente entrega la respuesta completa. Quien necesita streaming
-        # nativo —el dictáfono— habla directo con el modelo local y no pasa
-        # por aquí.
-        yield await self.generate_text(message, system_instruction, stop)
+        # El navegador va enviando trozos según los produce su modelo, así que
+        # se reenvían igual que los de Gemini u OpenRouter.
+        async for chunk in ai_relay.stream_completion(
+            self.user_id,
+            message=message,
+            system_instruction=system_instruction,
+            kind="text",
+            stop=stop,
+        ):
+            yield chunk
 
     async def generate_structured(
         self, content: str, response_model: type[BaseModel]

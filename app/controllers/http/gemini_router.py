@@ -116,7 +116,9 @@ async def local_relay_result(
                 payload.request_id, payload.error_code, payload.error_message
             )
         else:
-            entregado = ai_relay.resolve(payload.request_id, payload.text or "")
+            entregado = ai_relay.resolve(
+                payload.request_id, payload.text or "", payload.partial
+            )
         return JSONResponse(
             status_code=200,
             content={"delivered": entregado, "pending": ai_relay.pending_count()},

@@ -8,5 +8,7 @@ class AiRelayResultModel(BaseModel):
 
     request_id: str
     text: Optional[str] = None
+    # Con partial=True la petición sigue abierta y llegarán más trozos.
+    partial: bool = False
     error_code: Optional[str] = None
     error_message: Optional[str] = None

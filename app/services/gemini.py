@@ -499,6 +499,66 @@ async def build_local_context(user_id: str | None = None) -> dict[str, Any]:
     }
 
 
+async def _stream_reply(
+    message: str,
+    clave_prompt: str,
+    user_id: str | None = None,
+) -> AsyncIterator[str]:
+    """Genera una respuesta cediéndola por frases, ya limpia.
+
+    Es la versión en streaming de `response_sandy` y compañía. Sirve para que el
+    chat y los eventos empiecen a sonar en cuanto hay una frase, en vez de
+    esperar a la respuesta entera: con el modelo local esa espera se notaba
+    porque el navegador solo devolvía el texto completo.
+    """
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    prompts = build_prompt_bundle(settings)
+    name = persona_name(settings)
+    client = await _get_ai_client(user_id)
+    context = generate_context(user_id)
+    full_prompt = f"{prompts[clave_prompt]}\nHistorial conversacion: {context}"
+
+    streamer = ReplyStreamer(name)
+    async for delta in client.generate_text_stream(
+        message, full_prompt, build_stop_sequences(name)
+    ):
+        piece = streamer.feed(delta)
+        if piece:
+            yield piece
+    tail = streamer.close()
+    if tail:
+        yield tail
+
+
+async def stream_sandy(message: str, user_id: str | None = None) -> AsyncIterator[str]:
+    """Respuesta al chat, por frases. Registra el historial al terminar."""
+    partes: list[str] = []
+    async for piece in _stream_reply(message, "vtuber", user_id):
+        partes.append(piece)
+        yield piece
+
+    _record_exchange("user:" + message, "".join(partes), user_id)
+    await mark_activity(user_id)
+
+
+async def stream_gemini_events(
+    message: str, user_id: str | None = None
+) -> AsyncIterator[str]:
+    """Reacción a un evento, por frases."""
+    async for piece in _stream_reply(message, "events", user_id):
+        yield piece
+    await mark_activity(user_id)
+
+
+async def stream_gemini_rewards(
+    message: str, user_id: str | None = None
+) -> AsyncIterator[str]:
+    """Reacción a una recompensa, por frases."""
+    async for piece in _stream_reply(message, "rewards", user_id):
+        yield piece
+    await mark_activity(user_id)
+
+
 async def check_message(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
