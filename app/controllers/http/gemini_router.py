@@ -9,12 +9,18 @@ from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
 from app.domain.errors import error_payload
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
-from app.models.ai_relay_models import AiRelayResultModel, AiTaskResultModel
+from app.models.ai_relay_models import (
+    AiRelayResultModel,
+    AiTaskResultModel,
+    LocalOrderModel,
+)
 from app.models.message_model import MessageModel
 from app.services import ai_relay
 from app.services.gemini import (
     build_local_context,
+    local_stream_stats,
     record_local_task,
+    run_local_order,
     stream_sandy_shandrew,
 )
 
@@ -99,6 +105,40 @@ async def local_ai_context(current_user: ClerkUser = Depends(verify_clerk_sessio
     try:
         contexto = await build_local_context(current_user.user_id)
         return JSONResponse(status_code=200, content={"context": contexto})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/order")
+async def local_ai_order(
+    payload: LocalOrderModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """Aplica una orden del stream pedida por voz con el modelo local.
+
+    El navegador clasifica el mensaje con su propio modelo, pero cambiar el
+    título, la categoría o el modo de chat exige el token de Twitch del usuario,
+    que solo tiene el backend. La orden se ejecuta siempre contra el canal de
+    quien hace la petición, nunca contra el que venga en el cuerpo.
+    """
+    try:
+        ejecutada = await run_local_order(
+            payload.order_name, payload.order_objective, current_user.user_id
+        )
+        return JSONResponse(status_code=200, content={"executed": ejecutada})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.get("/ai/local/stats")
+async def local_ai_stats(current_user: ClerkUser = Depends(verify_clerk_session)):
+    """Datos del canal para que el modelo local conteste sobre el stream."""
+    try:
+        return JSONResponse(
+            status_code=200,
+            content={"stats": await local_stream_stats(current_user.user_id)},
+        )
     except Exception as exc:
         status_code, body = error_payload(exc)
         return JSONResponse(status_code=status_code, content=body)

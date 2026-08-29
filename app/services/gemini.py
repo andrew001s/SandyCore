@@ -499,6 +499,51 @@ async def build_local_context(user_id: str | None = None) -> dict[str, Any]:
     }
 
 
+async def run_local_order(
+    name: str | None, objective: str | None, user_id: str | None = None
+) -> bool:
+    """Ejecuta una orden del stream que el navegador clasificó con su modelo.
+
+    Con proveedor local la clasificación ocurre en el navegador, pero la orden
+    no puede: cambiar el título o el modo de chat necesita el token de Twitch
+    del usuario, que solo vive aquí. El nombre llega de un modelo, así que se
+    valida contra la lista conocida antes de tocar nada del canal.
+    """
+    from app.domain.errors import ORDER_FAILED, AppError
+    from app.services.twitch.events.moderation_handler import (
+        ORDENES,
+        _context,
+        moderator_actions,
+    )
+
+    clave = (name or "").strip().lower()
+    if clave not in ORDENES:
+        raise ValueError(f"Orden desconocida: {name!r}")
+
+    # `moderator_actions` se traga sus errores y devuelve False, así que sin esto
+    # un Twitch desconectado llegaba al usuario como "no se aplicó" y sin motivo.
+    # Aquí la excepción sí sube y se traduce al código que toca.
+    await _context(user_id)
+
+    ejecutada = await moderator_actions(
+        title=objective or "", name=clave, user_id=user_id
+    )
+    if not ejecutada:
+        # Sin esto el navegador recibía un 200 y la VTuber decía "ya está" sin
+        # que se hubiera cambiado nada en el canal.
+        raise AppError(ORDER_FAILED)
+
+    await mark_activity(user_id)
+    return True
+
+
+async def local_stream_stats(user_id: str | None = None) -> str:
+    """Datos del canal para la rama de estadísticas del modelo local."""
+    from app.services.twitch.events.moderation_handler import get_stream_info
+
+    return await get_stream_info(user_id)
+
+
 async def try_local_task(
     kind: str,
     message: str,

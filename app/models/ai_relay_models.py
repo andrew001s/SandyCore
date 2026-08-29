@@ -19,3 +19,10 @@ class AiTaskResultModel(BaseModel):
 
     message: str
     response: str
+
+
+class LocalOrderModel(BaseModel):
+    """Orden del stream que el navegador clasificó con su modelo local."""
+
+    order_name: str
+    order_objective: Optional[str] = None

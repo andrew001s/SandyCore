@@ -1,6 +1,7 @@
 import json
 
 import app.services.twitch.auth.auth as auth
+from app.domain.errors import CATEGORY_NOT_FOUND, AppError
 from app.services.twitch.chat import chat_handler
 
 
@@ -21,7 +22,56 @@ async def _context(user_id: str | None = None):
     return client, broadcaster, chat
 
 
-async def moderator_actions(title: str, name: str, user_id: str | None = None):
+# Lo que cuenta como "encender" un modo de chat. El modelo no siempre devuelve
+# "on": dice "activar", "actívalo" o "sí", y con una comparación exacta contra
+# "on" todas esas variantes acababan APAGANDO el modo en vez de encenderlo.
+_ENCENDIDO = {
+    "on",
+    "true",
+    "1",
+    "si",
+    "sí",
+    "activar",
+    "activa",
+    "activalo",
+    "actívalo",
+    "activado",
+    "activada",
+    "enciende",
+    "encender",
+    "enable",
+    "enabled",
+    "poner",
+    "pon",
+}
+
+
+def esta_encendido(valor: str | None) -> bool:
+    """¿El objetivo de la orden pide activar el modo?
+
+    Se normaliza porque el objetivo lo escribe un modelo de lenguaje en texto
+    libre: comparar contra "on" a secas dejaba fuera casi todas las formas en
+    que alguien pide activar algo hablando.
+    """
+    return (valor or "").strip().strip(".!¡").lower() in _ENCENDIDO
+
+
+# Órdenes que el clasificador puede pedir. Se valida contra esta lista antes de
+# tocar nada del canal: el nombre llega de un modelo, no de código nuestro.
+ORDENES = (
+    "title",
+    "game",
+    "category",
+    "clip",
+    "only_followers",
+    "only_subs",
+    "only_emotes",
+    "slow",
+)
+
+
+async def moderator_actions(title: str, name: str, user_id: str | None = None) -> bool:
+    """Ejecuta una orden del stream. Devuelve si se llegó a aplicar."""
     try:
         match name:
             case "title":
@@ -45,9 +95,14 @@ async def moderator_actions(title: str, name: str, user_id: str | None = None):
                     text="POLICE No se ha podido ejecutar la orden POLICE ",
                 )
                 return False
+    except AppError:
+        # Ya lleva código y motivo: se deja subir para que el usuario sepa qué
+        # pasó en vez de recibir un "no se pudo" genérico.
+        raise
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[ORDEN] No se pudo ejecutar {name!r}: {repr(e)}")
         return False
+    return True
 
 
 async def change_title(title: str, user_id: str | None = None):
@@ -65,6 +120,15 @@ async def change_game(game: str, user_id: str | None = None):
     async for g in twitch.get_games(names=[game]):
         game_id = g.id
         break
+
+    # Sin esto, una categoría que Twitch no reconoce dejaba game_id en None: la
+    # llamada no cambiaba nada y aun así se anunciaba el cambio en el chat.
+    if game_id is None:
+        raise AppError(
+            CATEGORY_NOT_FOUND,
+            f"Twitch no tiene ninguna categoría llamada {game!r}",
+        )
+
     await twitch.modify_channel_information(user.id, game_id)
     await chat.send_message(
         room=user.display_name,
@@ -83,7 +147,7 @@ async def create_clip(user_id: str | None = None):
 
 async def only_followers(activate: str, user_id: str | None = None):
     twitch, user, chat = await _context(user_id)
-    if activate == "on":
+    if esta_encendido(activate):
         await twitch.update_chat_settings(
             broadcaster_id=user.id, moderator_id=user.id, follower_mode=True
         )
@@ -103,7 +167,7 @@ async def only_followers(activate: str, user_id: str | None = None):
 
 async def only_subs(activate: str, user_id: str | None = None):
     twitch, user, chat = await _context(user_id)
-    if activate == "on":
+    if esta_encendido(activate):
         await twitch.update_chat_settings(
             broadcaster_id=user.id, moderator_id=user.id, subscriber_mode=True
         )
@@ -121,7 +185,7 @@ async def only_subs(activate: str, user_id: str | None = None):
 
 async def only_emotes(activate: str, user_id: str | None = None):
     twitch, user, chat = await _context(user_id)
-    if activate == "on":
+    if esta_encendido(activate):
         await twitch.update_chat_settings(
             broadcaster_id=user.id, moderator_id=user.id, emote_mode=True
         )
@@ -140,7 +204,7 @@ async def only_emotes(activate: str, user_id: str | None = None):
 
 async def slow_mode(activate: str, user_id: str | None = None):
     twitch, user, chat = await _context(user_id)
-    if activate == "on":
+    if esta_encendido(activate):
         await twitch.update_chat_settings(
             broadcaster_id=user.id, moderator_id=user.id, slow_mode=True
         )
