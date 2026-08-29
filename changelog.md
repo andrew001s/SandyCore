@@ -1,3 +1,15 @@
+## v2.9.0 (2026-08-29)
+
+### Feat
+
+- **gemini**: agregar lógica de reintentos para operaciones asíncronas
+
+### Fix
+
+- **gemini**: actualizar comentarios y reemplazos de modelos en gemini_adapter.py
+- **gemini**: actualizar modelo por defecto a "gemini-3.1-flash-lite"
+- **gemini**: corregir mapeo de modelo retirado "gemini-3.1-flash" a "gemini-3.1-flash-lite"
+
 ## v2.8.0 (2026-08-29)
 
 ### Feat
