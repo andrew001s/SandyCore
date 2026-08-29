@@ -31,3 +31,4 @@ class ClientSettingsModel(BaseModel):
     custom_banned_links: Optional[list[str]] = None
     service_mode: Optional[str] = None
     chunk_size: Optional[int] = None
+    onboarding_completed: Optional[bool] = None
