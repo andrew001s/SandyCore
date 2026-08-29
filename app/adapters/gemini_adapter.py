@@ -1,3 +1,4 @@
+import asyncio
 import time
 import traceback
 
@@ -9,22 +10,28 @@ from app.core.ports.ai_port import AIPort
 # El valor efectivo sale de la configuración del usuario (ver `_get_ai_client`),
 # así que cambiar de modelo no exige un despliegue.
 #
-# Ojo con el nombre: no existe un "gemini-3.1-flash" a secas. La familia 3.1
+# Ojo con el nombre: no existe un "gemini-3.1-flash" a secas, la familia 3.1
 # solo publica la variante lite. Modelos Flash vigentes, del más capaz al más
 # barato: gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash,
 # gemini-3.5-flash-lite, gemini-3.1-flash-lite. Los 2.0 están apagados.
-DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
+#
+# Se usa el 3.1-lite y no el 3.7: el 3.7 devolvía 503 "high demand" de forma
+# constante mientras el 3.1-lite respondía con la misma API key.
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
 
-# Nombres que la API ya no sirve, con su reemplazo. Un modelo muerto guardado en
-# la configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
+# Nombres que no se llaman, con su reemplazo. Un modelo muerto guardado en la
+# configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
 # recompensas— y el bot se queda mudo en mitad del directo. Sustituirlo y dejarlo
 # escrito en el log es preferible a repetir el mismo 404 en bucle.
 #
 # Solo se tocan los nombres de esta lista: uno que no reconozcamos pasa tal cual,
 # para no bloquear un modelo nuevo que Google publique después.
-RETIRED_GEMINI_MODELS = {
+GEMINI_MODEL_REPLACEMENTS = {
     # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante.
     "gemini-3.1-flash": DEFAULT_GEMINI_MODEL,
+    # Existe, pero devolvía 503 "high demand" de forma constante donde el
+    # 3.1-lite respondía con la misma API key.
+    "gemini-3.7-flash": DEFAULT_GEMINI_MODEL,
     # Apagados el 1 de junio de 2026.
     "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
     "gemini-2.0-flash-lite": DEFAULT_GEMINI_MODEL,
@@ -36,7 +43,7 @@ RETIRED_GEMINI_MODELS = {
 def resolve_gemini_model(model: str | None) -> str:
     """Nombre de modelo utilizable a partir del que haya en la configuración."""
     elegido = (model or "").strip() or DEFAULT_GEMINI_MODEL
-    reemplazo = RETIRED_GEMINI_MODELS.get(elegido.lower())
+    reemplazo = GEMINI_MODEL_REPLACEMENTS.get(elegido.lower())
     if reemplazo:
         print(
             f"[GEMINI] El modelo '{elegido}' ya no está disponible; se usa "
@@ -73,6 +80,28 @@ def _extract_text(response) -> str | None:
     return None
 
 
+RETRY_ATTEMPTS = 3
+RETRY_INITIAL_DELAY = 0.5
+RETRY_MAX_DELAY = 4.0
+
+
+async def _with_retries(operacion, descripcion: str):
+    """Ejecuta `operacion` reintentando solo los fallos pasajeros."""
+    espera = RETRY_INITIAL_DELAY
+    for intento in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            return await operacion()
+        except AIProviderError as error:
+            if not error.retryable or intento == RETRY_ATTEMPTS:
+                raise
+            print(
+                f"[GEMINI] {descripcion}: {error.code} (intento {intento}"
+                f"/{RETRY_ATTEMPTS}); reintentando en {espera:.1f}s"
+            )
+            await asyncio.sleep(espera)
+            espera = min(espera * 2, RETRY_MAX_DELAY)
+
+
 class GeminiAdapter(AIPort):
     def __init__(self, api_key: str, model: str = DEFAULT_GEMINI_MODEL):
         from google import genai
@@ -89,14 +118,24 @@ class GeminiAdapter(AIPort):
         # `client.aio` es la API asíncrona. La versión síncrona bloqueaba el
         # event loop durante toda la llamada, congelando de paso el chat,
         # EventSub y los streams SSE del resto de usuarios del proceso.
-        return await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                stop_sequences=stop_sequences or None,
-            ),
-        )
+        async def intento():
+            # Se clasifica aquí dentro para que el reintento pueda distinguir un
+            # 503 pasajero de una API key inválida, que no tiene sentido repetir.
+            try:
+                return await self.client.aio.models.generate_content(
+                    model=self.model,
+                    contents=message,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        stop_sequences=stop_sequences or None,
+                    ),
+                )
+            except Exception as exc:
+                raise classify_ai_error(
+                    exc, provider="gemini", model=self.model
+                ) from exc
+
+        return await _with_retries(intento, "generación de texto")
 
     async def generate_text(
         self,
@@ -157,16 +196,42 @@ class GeminiAdapter(AIPort):
         stop_sequences = [s for s in (stop or []) if s][: self.MAX_STOP_SEQUENCES]
         recibido = 0
 
+        async def arrancar():
+            """Abre el stream y trae el primer trozo.
+
+            La petición HTTP no se lanza al crear el stream, sino al pedir el
+            primer elemento: envolver solo la creación no reintentaba nada. Y
+            hasta aquí no se ha emitido texto, así que repetir es seguro; una vez
+            empezada la voz, repetir duplicaría lo que la VTuber acaba de decir.
+            """
+            try:
+                stream = await self.client.aio.models.generate_content_stream(
+                    model=self.model,
+                    contents=message,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        stop_sequences=stop_sequences or None,
+                    ),
+                )
+                iterador = stream.__aiter__()
+                try:
+                    primero = await iterador.__anext__()
+                except StopAsyncIteration:
+                    primero = None
+                return iterador, primero
+            except Exception as exc:
+                raise classify_ai_error(
+                    exc, provider="gemini", model=self.model
+                ) from exc
+
         try:
-            stream = await self.client.aio.models.generate_content_stream(
-                model=self.model,
-                contents=message,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    stop_sequences=stop_sequences or None,
-                ),
-            )
-            async for chunk in stream:
+            iterador, primero = await _with_retries(arrancar, "streaming")
+            for chunk in (primero,) if primero is not None else ():
+                texto = getattr(chunk, "text", None)
+                if texto:
+                    recibido += len(texto)
+                    yield texto
+            async for chunk in iterador:
                 texto = getattr(chunk, "text", None)
                 if texto:
                     recibido += len(texto)
@@ -184,15 +249,23 @@ class GeminiAdapter(AIPort):
     ) -> BaseModel:
         start = time.perf_counter()
         print(f"[GEMINI] Enviando prompt estructurado a {self.model}...")
+        async def intento():
+            try:
+                return await self.client.aio.models.generate_content(
+                    model=self.model,
+                    contents=content,
+                    config={
+                        "response_mime_type": "application/json",
+                        "response_schema": response_model,
+                    },
+                )
+            except Exception as exc:
+                raise classify_ai_error(
+                    exc, provider="gemini", model=self.model
+                ) from exc
+
         try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=content,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": response_model,
-                },
-            )
+            response = await _with_retries(intento, "clasificación")
         except Exception as exc:
             error = classify_ai_error(exc, provider="gemini", model=self.model)
             print(f"[GEMINI] ERROR al generar estructura: {error!r}")
