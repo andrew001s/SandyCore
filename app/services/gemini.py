@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.core.runtime import get_active_user_id
 from app.core.ports.ai_port import AIPort
 from app.services.client_settings import load_effective_settings
-from app.services.twitch.lifecycle import register_activity_and_monitor
+from app.services.twitch.lifecycle import mark_activity, register_activity_and_monitor
 from app.domain.prompts import build_prompt_bundle, resolve_persona_profile
 
 
@@ -499,64 +499,56 @@ async def build_local_context(user_id: str | None = None) -> dict[str, Any]:
     }
 
 
-async def _stream_reply(
+async def try_local_task(
+    kind: str,
     message: str,
     clave_prompt: str,
     user_id: str | None = None,
-) -> AsyncIterator[str]:
-    """Genera una respuesta cediéndola por frases, ya limpia.
+) -> bool:
+    """Delega la respuesta en el navegador cuando el proveedor es el modelo local.
 
-    Es la versión en streaming de `response_sandy` y compañía. Sirve para que el
-    chat y los eventos empiecen a sonar en cuanto hay una frase, en vez de
-    esperar a la respuesta entera: con el modelo local esa espera se notaba
-    porque el navegador solo devolvía el texto completo.
+    El backend compone el prompt —persona, reglas e historial— y manda la tarea;
+    el navegador llama a su modelo y encadena la voz sin dar la vuelta por aquí,
+    igual que hace el micrófono. Devuelve False si no aplica, para que el
+    llamador siga por el camino normal.
     """
     settings = await load_effective_settings(user_id or get_active_user_id())
+    if settings.get("ai_provider") != "local":
+        return False
+
+    from app.services import ai_relay
+
     prompts = build_prompt_bundle(settings)
     name = persona_name(settings)
-    client = await _get_ai_client(user_id)
     context = generate_context(user_id)
     full_prompt = f"{prompts[clave_prompt]}\nHistorial conversacion: {context}"
 
-    streamer = ReplyStreamer(name)
-    async for delta in client.generate_text_stream(
-        message, full_prompt, build_stop_sequences(name)
-    ):
-        piece = streamer.feed(delta)
-        if piece:
-            yield piece
-    tail = streamer.close()
-    if tail:
-        yield tail
+    enviado = await ai_relay.dispatch_task(
+        user_id or get_active_user_id(),
+        kind=kind,
+        message=message,
+        system_instruction=full_prompt,
+        stop=build_stop_sequences(name),
+    )
+    if enviado:
+        await mark_activity(user_id)
+    else:
+        print(
+            "[AI TASK] No hay pestaña abierta para atender el modelo local; "
+            "el mensaje se queda sin respuesta."
+        )
+    return enviado
 
 
-async def stream_sandy(message: str, user_id: str | None = None) -> AsyncIterator[str]:
-    """Respuesta al chat, por frases. Registra el historial al terminar."""
-    partes: list[str] = []
-    async for piece in _stream_reply(message, "vtuber", user_id):
-        partes.append(piece)
-        yield piece
-
-    _record_exchange("user:" + message, "".join(partes), user_id)
-    await mark_activity(user_id)
-
-
-async def stream_gemini_events(
-    message: str, user_id: str | None = None
-) -> AsyncIterator[str]:
-    """Reacción a un evento, por frases."""
-    async for piece in _stream_reply(message, "events", user_id):
-        yield piece
-    await mark_activity(user_id)
-
-
-async def stream_gemini_rewards(
-    message: str, user_id: str | None = None
-) -> AsyncIterator[str]:
-    """Reacción a una recompensa, por frases."""
-    async for piece in _stream_reply(message, "rewards", user_id):
-        yield piece
-    await mark_activity(user_id)
+async def record_local_task(
+    message: str, response: str, user_id: str | None = None
+) -> str:
+    """Cierra una tarea resuelta en el navegador: limpia y guarda el historial."""
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    clean = _sanitize_reply(response, persona_name(settings))
+    if clean:
+        _record_exchange("user:" + message, clean, user_id)
+    return clean
 
 
 async def check_message(message: str, user_id: str | None = None) -> str:

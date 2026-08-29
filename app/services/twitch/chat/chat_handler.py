@@ -7,7 +7,7 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.use_cases.chat_use_case import ChatUseCase
 from app.services.client_settings import load_effective_settings, resolve_chunk_size
-from app.services.gemini import check_message, stream_sandy
+from app.services.gemini import check_message, response_sandy, try_local_task
 from app.services.moderator import check_banned_words
 
 DEFAULT_BOTS = ["streamlabs", "streamelements", "nightbot"]
@@ -147,18 +147,20 @@ class TwitchChatSession:
         batch = list(self.chunk_message)
         self.chunk_message.clear()
 
-        # Cada frase se emite en cuanto está lista: el frontend sintetiza voz por
-        # evento, así que la VTuber empieza a hablar sin esperar al resto.
+        entrada = "\n".join(batch)
+
+        # Con modelo local, el navegador resuelve la tarea entera: llama a su
+        # modelo y encadena la voz directamente, igual que hace el micrófono.
+        # Así el audio arranca con la primera frase sin dar la vuelta por aquí.
+        if await try_local_task("chat", entrada, "vtuber", self.user_id):
+            return
+
         try:
-            emitidas = 0
-            async for piece in stream_sandy("\n".join(batch), self.user_id):
-                emitidas += 1
-                await self._reply(msg, piece, batch)
-            if emitidas == 0:
-                await self._reply(msg, "No pude responder en este momento.", batch)
+            response = await response_sandy(entrada, self.user_id)
         except Exception as exc:
             print(f"[CHAT ERROR] No se pudo generar respuesta: {repr(exc)}")
-            await self._reply(msg, "No pude responder en este momento.", batch)
+            response = "No pude responder en este momento."
+        await self._reply(msg, response, batch)
 
     async def send(self, message: str) -> bool:
         if self.chat is None:

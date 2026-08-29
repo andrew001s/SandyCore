@@ -9,10 +9,14 @@ from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
 from app.domain.errors import error_payload
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
-from app.models.ai_relay_models import AiRelayResultModel
+from app.models.ai_relay_models import AiRelayResultModel, AiTaskResultModel
 from app.models.message_model import MessageModel
 from app.services import ai_relay
-from app.services.gemini import build_local_context, stream_sandy_shandrew
+from app.services.gemini import (
+    build_local_context,
+    record_local_task,
+    stream_sandy_shandrew,
+)
 
 router = APIRouter(tags=["AI"])
 
@@ -123,6 +127,25 @@ async def local_relay_result(
             status_code=200,
             content={"delivered": entregado, "pending": ai_relay.pending_count()},
         )
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/task-result")
+async def local_task_result(
+    payload: AiTaskResultModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """El navegador informa del texto con el que respondió a una tarea local.
+
+    No sirve para hablar —eso ya lo hizo el navegador— sino para que el backend
+    limpie el texto y lo guarde en el historial de la conversación.
+    """
+    try:
+        clean = await record_local_task(
+            payload.message, payload.response, current_user.user_id
+        )
+        return JSONResponse(status_code=200, content={"message": clean})
     except Exception as exc:
         status_code, body = error_payload(exc)
         return JSONResponse(status_code=status_code, content=body)

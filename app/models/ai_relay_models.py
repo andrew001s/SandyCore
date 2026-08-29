@@ -12,3 +12,10 @@ class AiRelayResultModel(BaseModel):
     partial: bool = False
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+
+class AiTaskResultModel(BaseModel):
+    """Texto final de una tarea que el navegador resolvió por su cuenta."""
+
+    message: str
+    response: str

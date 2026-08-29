@@ -149,6 +149,42 @@ async def request_completion(
     return "".join(partes)
 
 
+async def dispatch_task(
+    user_id: str,
+    *,
+    kind: str,
+    message: str,
+    system_instruction: str,
+    stop: list[str] | None = None,
+) -> bool:
+    """Encarga al navegador una respuesta completa, sin esperarla aquí.
+
+    A diferencia de `stream_completion`, el backend no recibe el texto para
+    reenviarlo: el navegador llama a su modelo y encadena la voz directamente,
+    que es lo que permite que el audio arranque con la primera frase. Solo
+    devuelve el texto final, y solo para el historial.
+
+    Devuelve False si no hay ninguna pestaña que pueda atenderla.
+    """
+    owner = str(user_id)
+    if not has_listener(owner):
+        return False
+
+    await _adapter.broadcast_message(
+        {
+            "id": f"ai_task_{uuid4().hex}",
+            "type": "ai_task",
+            "kind": kind,
+            "message": message,
+            "systemInstruction": system_instruction,
+            "stop": stop or [],
+            "metadata": {"source": "ai_relay", "user_id": owner},
+        },
+        owner,
+    )
+    return True
+
+
 def _push(request_id: str, item: tuple[str, Any]) -> bool:
     queue = _pending.get(request_id)
     if queue is None:
