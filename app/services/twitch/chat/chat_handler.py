@@ -7,7 +7,7 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.use_cases.chat_use_case import ChatUseCase
 from app.services.client_settings import load_effective_settings, resolve_chunk_size
-from app.services.gemini import check_message, response_sandy, try_local_task
+from app.services.gemini import response_sandy, should_delete_message, try_local_task
 from app.services.moderator import check_banned_words
 
 DEFAULT_BOTS = ["streamlabs", "streamelements", "nightbot"]
@@ -118,17 +118,23 @@ class TwitchChatSession:
             and await check_banned_words(msg.text, self.user_id)
             and msg.user.mod is False
         ):
-            moderation = await check_message(msg.text, self.user_id)
-            if moderation.strip().upper() == "NO PERMITIDO":
-                twitch_instance = self.twitch_bot if self.twitch_bot else self.twitch
-                broadcaster_id = await self._broadcaster_id()
-                await twitch_instance.delete_chat_message(
-                    broadcaster_id, broadcaster_id, msg.id
-                )
-                await self.chat.send_message(
-                    msg.room.name,
-                    f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
-                )
+            # El diccionario solo levanta la sospecha; quien decide es la IA. Con
+            # modelo local la consulta va y vuelve por el canal del navegador, y
+            # si algo falla `should_delete_message` deja pasar el mensaje en vez
+            # de tumbar el chat.
+            if await should_delete_message(msg.text, self.user_id):
+                try:
+                    twitch_instance = self.twitch_bot if self.twitch_bot else self.twitch
+                    broadcaster_id = await self._broadcaster_id()
+                    await twitch_instance.delete_chat_message(
+                        broadcaster_id, broadcaster_id, msg.id
+                    )
+                    await self.chat.send_message(
+                        msg.room.name,
+                        f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
+                    )
+                except Exception as exc:
+                    print(f"[MODERACION] No se pudo borrar el mensaje: {repr(exc)}")
                 msg.text = "Mensaje no permitido"
                 return
 

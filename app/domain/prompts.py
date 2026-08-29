@@ -19,6 +19,7 @@ Clasifica el mensaje como PERMITIDO o NO PERMITIDO.
 PERMITIDO: lenguaje fuerte sin intención ofensiva, humor, críticas sin ataque personal.
 NO PERMITIDO: insultos, amenazas, racismo, sexismo, odio, spam, contenido sexual, autolesiones.
 Responde solo "PERMITIDO" o "NO PERMITIDO".
+Nada más: ni explicaciones, ni comillas, ni punto final, ni razonamiento previo.
 Mensaje:
 """
 

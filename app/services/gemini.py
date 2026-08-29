@@ -1,3 +1,4 @@
+import asyncio
 from collections import deque
 import re
 import unicodedata
@@ -596,11 +597,76 @@ async def record_local_task(
     return clean
 
 
+# Un veredicto de moderación tarda menos que una respuesta hablada, y esperar
+# tres minutos para decidir si se borra un mensaje del chat no sirve de nada:
+# para entonces ya lo ha leído todo el mundo.
+MODERATION_TIMEOUT_SECONDS = 20.0
+
+# "NO PERMITIDO" contiene "PERMITIDO", así que la negación se busca primero y
+# pegada: hasta dos palabras entre medias cubre "no está permitido" sin tragarse
+# un "no, el mensaje es permitido", donde el "no" va por otra cosa.
+_NEGADO_RE = re.compile(r"\bNO\b(?:\s+\w+){0,2}\s+PERMITIDO\b")
+_PERMITIDO_RE = re.compile(r"\bPERMITIDO\b")
+
+
+def parse_moderation_verdict(raw: str) -> bool | None:
+    """True = borrar, False = dejar pasar, None = no se entendió.
+
+    El prompt pide una sola palabra, pero los modelos —sobre todo los locales
+    pequeños— añaden punto final, comillas o una frase alrededor. Comparar por
+    igualdad exacta dejaba pasar todo eso.
+    """
+    texto = unicodedata.normalize("NFKD", raw or "")
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).upper()
+
+    if _NEGADO_RE.search(texto):
+        return True
+    if _PERMITIDO_RE.search(texto):
+        return False
+    return None
+
+
+async def should_delete_message(message: str, user_id: str | None = None) -> bool:
+    """¿La IA dice que este mensaje hay que borrarlo?
+
+    Ante cualquier duda se deja pasar: borrar el mensaje de un espectador por
+    error es visible y no tiene vuelta atrás, mientras que uno que se cuela lo
+    puede quitar el streamer a mano. Por eso un fallo del modelo, un plazo
+    vencido o un veredicto ininteligible no borran nada.
+    """
+    try:
+        veredicto = await asyncio.wait_for(
+            check_message(message, user_id), MODERATION_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        print(
+            f"[MODERACION] El modelo no contestó en {MODERATION_TIMEOUT_SECONDS:.0f}s; "
+            "el mensaje se deja pasar."
+        )
+        return False
+    except Exception as exc:
+        print(f"[MODERACION] No se pudo consultar al modelo: {repr(exc)}")
+        return False
+
+    decision = parse_moderation_verdict(veredicto)
+    if decision is None:
+        print(f"[MODERACION] Veredicto ininteligible {veredicto!r}; se deja pasar.")
+        return False
+    return decision
+
+
 async def check_message(message: str, user_id: str | None = None) -> str:
+    """Pide el veredicto al modelo y lo devuelve en crudo.
+
+    No pasa por `client_gemini` a propósito: juzgar un mensaje no depende de la
+    conversación anterior, así que no se le adjunta el historial —gasta tokens y
+    puede sesgar la decisión—, y el texto se devuelve sin sanear porque quien lo
+    interpreta es `parse_moderation_verdict`, que prefiere verlo tal cual.
+    """
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["mod"], user_id, persona_name(settings))
-    return response
+    client = await _get_ai_client(user_id)
+    return await client.generate_verdict(message, prompts["mod"])
 
 
 async def response_gemini_rewards(message: str, user_id: str | None = None) -> str:

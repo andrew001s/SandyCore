@@ -63,6 +63,21 @@ class BrowserRelayAdapter(AIPort):
         ):
             yield chunk
 
+    async def generate_verdict(
+        self,
+        message: str,
+        system_instruction: str,
+    ) -> str:
+        # `kind="moderation"` le dice al navegador que junte la respuesta entera
+        # antes de devolverla: si se trocea por frases, el backend acaba
+        # reensamblando pedazos de una explicación en vez de un veredicto.
+        return await ai_relay.request_completion(
+            self.user_id,
+            message=message,
+            system_instruction=system_instruction,
+            kind="moderation",
+        )
+
     async def generate_structured(
         self, content: str, response_model: type[BaseModel]
     ) -> BaseModel:
