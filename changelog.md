@@ -1,3 +1,16 @@
+## v2.7.0 (2026-08-29)
+
+### Feat
+
+- **moderation**: mejorar la lógica de moderación y agregar trazas de verificación de mensajes
+- **moderation**: implementar veredicto de moderación y lógica de eliminación de mensajes
+- **ai-local**: implementar ordenes y estadísticas del stream en el modelo local
+- **ai-local**: delegar la respuesta completa en el navegador
+- **ai-relay**: ✨ implementar streaming de respuestas y manejo de trozos en el adaptador de IA
+- **gemini**: ✨ agregar soporte para el modelo Gemini configurable en la configuración del cliente
+- **ai-relay**: ✨ implementar adaptador de IA para delegar inferencia en el navegador del usuario
+- **context**: ✨ agregar endpoint para obtener contexto local de IA y construir prompts
+
 ## v2.6.0 (2026-08-29)
 
 ### Feat
