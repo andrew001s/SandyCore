@@ -1,3 +1,9 @@
+## v2.8.0 (2026-08-29)
+
+### Feat
+
+- **gemini**: agregar lógica para manejar modelos retirados y resolver configuraciones
+
 ## v2.7.0 (2026-08-29)
 
 ### Feat
