@@ -48,24 +48,42 @@ class EventSubSession:
         self.instance.start()
 
         broadcaster = self.broadcaster_id
+        suscripciones = []
         if rewards_enabled:
-            await self.instance.listen_channel_points_custom_reward_redemption_add(
-                broadcaster_user_id=broadcaster, callback=self.chanel_points
+            suscripciones.append(
+                self.instance.listen_channel_points_custom_reward_redemption_add(
+                    broadcaster_user_id=broadcaster, callback=self.chanel_points
+                )
             )
         if events_enabled:
-            await self.instance.listen_channel_follow_v2(
-                broadcaster, broadcaster, self.on_follow
+            suscripciones.extend(
+                [
+                    self.instance.listen_channel_follow_v2(
+                        broadcaster, broadcaster, self.on_follow
+                    ),
+                    self.instance.listen_channel_subscribe(broadcaster, self.on_subscribe),
+                    self.instance.listen_channel_subscription_message(
+                        broadcaster, self.on_subscribe_message
+                    ),
+                    self.instance.listen_channel_subscription_gift(
+                        broadcaster, self.on_sub_gift
+                    ),
+                    self.instance.listen_channel_cheer(broadcaster, self.on_cheer),
+                    self.instance.listen_channel_raid(
+                        to_broadcaster_user_id=broadcaster, callback=self.on_raid
+                    ),
+                ]
             )
-            await self.instance.listen_channel_subscribe(broadcaster, self.on_subscribe)
-            await self.instance.listen_channel_subscription_message(
-                broadcaster, self.on_subscribe_message
-            )
-            await self.instance.listen_channel_subscription_gift(
-                broadcaster, self.on_sub_gift
-            )
-            await self.instance.listen_channel_cheer(broadcaster, self.on_cheer)
-            await self.instance.listen_channel_raid(
-                to_broadcaster_user_id=broadcaster, callback=self.on_raid
+
+        # En paralelo: cada suscripción es una petición HTTP a Twitch y en serie
+        # sumaban siete idas y vueltas al arranque.
+        resultados = await asyncio.gather(*suscripciones, return_exceptions=True)
+        fallidas = [r for r in resultados if isinstance(r, BaseException)]
+        if fallidas:
+            # Una suscripción que falle no debe tumbar las demás ni el chat.
+            print(
+                f"[EVENTSUB] {len(fallidas)}/{len(resultados)} suscripciones fallaron "
+                f"para {self.user_id}: {fallidas[0]!r}"
             )
         return True
 

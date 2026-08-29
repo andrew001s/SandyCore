@@ -1,7 +1,7 @@
 import app.services.twitch.auth.auth as auth
 from app.services.twitch.chat.chat_handler import close_chat, setup_chat
 from app.services.twitch.events.eventsub_handler import close_eventsub, setup_eventsub
-from app.services.twitch.lifecycle import disarm, stop_services
+from app.services.twitch.lifecycle import stop_services
 
 
 async def get_user_profile(bot=False, user_id=None) -> dict:
@@ -17,7 +17,6 @@ async def get_user_profile(bot=False, user_id=None) -> dict:
 async def close_twitch(user_id=None):
     print("[TWITCH SERVICE] close_twitch() -> stop runtime")
     await stop_services(user_id)
-    await disarm(user_id)
 
 
 async def logout_twitch(user_id=None):
