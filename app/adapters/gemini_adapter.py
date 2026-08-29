@@ -24,8 +24,11 @@ DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
 # Solo se tocan los nombres de esta lista: uno que no reconozcamos pasa tal cual,
 # para no bloquear un modelo nuevo que Google publique después.
 RETIRED_GEMINI_MODELS = {
-    # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante.
-    "gemini-3.1-flash": DEFAULT_GEMINI_MODEL,
+    # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante, así
+    # que se corrige al modelo que el usuario realmente pidió. Mandarlo al
+    # modelo por defecto era peor: cambia de familia sin avisar y, en la
+    # práctica, el 3.7 responde 503 por saturación donde el 3.1-lite no.
+    "gemini-3.1-flash": "gemini-3.1-flash-lite",
     # Apagados el 1 de junio de 2026.
     "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
     "gemini-2.0-flash-lite": DEFAULT_GEMINI_MODEL,
