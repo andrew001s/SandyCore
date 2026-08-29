@@ -10,24 +10,28 @@ from app.core.ports.ai_port import AIPort
 # El valor efectivo sale de la configuración del usuario (ver `_get_ai_client`),
 # así que cambiar de modelo no exige un despliegue.
 #
-# Ojo con el nombre: no existe un "gemini-3.1-flash" a secas. La familia 3.1
+# Ojo con el nombre: no existe un "gemini-3.1-flash" a secas, la familia 3.1
 # solo publica la variante lite. Modelos Flash vigentes, del más capaz al más
 # barato: gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash,
 # gemini-3.5-flash-lite, gemini-3.1-flash-lite. Los 2.0 están apagados.
+#
+# Se usa el 3.1-lite y no el 3.7: el 3.7 devolvía 503 "high demand" de forma
+# constante mientras el 3.1-lite respondía con la misma API key.
 DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
 
-# Nombres que la API ya no sirve, con su reemplazo. Un modelo muerto guardado en
-# la configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
+# Nombres que no se llaman, con su reemplazo. Un modelo muerto guardado en la
+# configuración no rompe una llamada: rompe TODAS —chat, moderación, eventos y
 # recompensas— y el bot se queda mudo en mitad del directo. Sustituirlo y dejarlo
 # escrito en el log es preferible a repetir el mismo 404 en bucle.
 #
 # Solo se tocan los nombres de esta lista: uno que no reconozcamos pasa tal cual,
 # para no bloquear un modelo nuevo que Google publique después.
-RETIRED_GEMINI_MODELS = {
-    # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante, así
-    # que se corrige al modelo que el usuario realmente pidió. Mandarlo al
-    # modelo por defecto era peor: cambia de familia sin avisar y, en la
-    # práctica, el 3.7 responde 503 por saturación donde el 3.1-lite no.
+GEMINI_MODEL_REPLACEMENTS = {
+    # Nunca existió sin "-lite": la familia 3.1 solo publicó esa variante.
+    "gemini-3.1-flash": DEFAULT_GEMINI_MODEL,
+    # Existe, pero devolvía 503 "high demand" de forma constante donde el
+    # 3.1-lite respondía con la misma API key.
+    "gemini-3.7-flash": DEFAULT_GEMINI_MODEL,
     # Apagados el 1 de junio de 2026.
     "gemini-2.0-flash": DEFAULT_GEMINI_MODEL,
     "gemini-2.0-flash-lite": DEFAULT_GEMINI_MODEL,
@@ -39,7 +43,7 @@ RETIRED_GEMINI_MODELS = {
 def resolve_gemini_model(model: str | None) -> str:
     """Nombre de modelo utilizable a partir del que haya en la configuración."""
     elegido = (model or "").strip() or DEFAULT_GEMINI_MODEL
-    reemplazo = RETIRED_GEMINI_MODELS.get(elegido.lower())
+    reemplazo = GEMINI_MODEL_REPLACEMENTS.get(elegido.lower())
     if reemplazo:
         print(
             f"[GEMINI] El modelo '{elegido}' ya no está disponible; se usa "
