@@ -7,9 +7,22 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from app.adapters.gemini_services import GeminiServices
 from app.core.security.clerk import ClerkUser, verify_clerk_session
 from app.core.use_cases.gemini_use_case import GeminiServicesUseCase
+from app.domain.errors import error_payload
 from app.domain.ai_errors import UNKNOWN, AIProviderError, classify_ai_error
+from app.models.ai_relay_models import (
+    AiRelayResultModel,
+    AiTaskResultModel,
+    LocalOrderModel,
+)
 from app.models.message_model import MessageModel
-from app.services.gemini import stream_sandy_shandrew
+from app.services import ai_relay
+from app.services.gemini import (
+    build_local_context,
+    local_stream_stats,
+    record_local_task,
+    run_local_order,
+    stream_sandy_shandrew,
+)
 
 router = APIRouter(tags=["AI"])
 
@@ -79,3 +92,100 @@ async def gemini_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/ai/local/context")
+async def local_ai_context(current_user: ClerkUser = Depends(verify_clerk_session)):
+    """Prompts y personalidad para un modelo local.
+
+    El navegador llama directo a su modelo, así que necesita el system prompt
+    que el backend usa con Gemini y OpenRouter: reglas base, formato de salida,
+    perfil del personaje e historial de la conversación.
+    """
+    try:
+        contexto = await build_local_context(current_user.user_id)
+        return JSONResponse(status_code=200, content={"context": contexto})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/order")
+async def local_ai_order(
+    payload: LocalOrderModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """Aplica una orden del stream pedida por voz con el modelo local.
+
+    El navegador clasifica el mensaje con su propio modelo, pero cambiar el
+    título, la categoría o el modo de chat exige el token de Twitch del usuario,
+    que solo tiene el backend. La orden se ejecuta siempre contra el canal de
+    quien hace la petición, nunca contra el que venga en el cuerpo.
+    """
+    try:
+        ejecutada = await run_local_order(
+            payload.order_name, payload.order_objective, current_user.user_id
+        )
+        return JSONResponse(status_code=200, content={"executed": ejecutada})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.get("/ai/local/stats")
+async def local_ai_stats(current_user: ClerkUser = Depends(verify_clerk_session)):
+    """Datos del canal para que el modelo local conteste sobre el stream."""
+    try:
+        return JSONResponse(
+            status_code=200,
+            content={"stats": await local_stream_stats(current_user.user_id)},
+        )
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/result")
+async def local_relay_result(
+    payload: AiRelayResultModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """El navegador entrega el resultado de su modelo local.
+
+    La petición la abrió el backend por el canal SSE de este mismo usuario; aquí
+    solo se desbloquea a quien estaba esperando. Que ya no espere nadie no es un
+    error: pudo vencer el plazo mientras el modelo generaba.
+    """
+    try:
+        if payload.error_code or payload.error_message:
+            entregado = ai_relay.fail(
+                payload.request_id, payload.error_code, payload.error_message
+            )
+        else:
+            entregado = ai_relay.resolve(
+                payload.request_id, payload.text or "", payload.partial
+            )
+        return JSONResponse(
+            status_code=200,
+            content={"delivered": entregado, "pending": ai_relay.pending_count()},
+        )
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)
+
+
+@router.post("/ai/local/task-result")
+async def local_task_result(
+    payload: AiTaskResultModel, current_user: ClerkUser = Depends(verify_clerk_session)
+):
+    """El navegador informa del texto con el que respondió a una tarea local.
+
+    No sirve para hablar —eso ya lo hizo el navegador— sino para que el backend
+    limpie el texto y lo guarde en el historial de la conversación.
+    """
+    try:
+        clean = await record_local_task(
+            payload.message, payload.response, current_user.user_id
+        )
+        return JSONResponse(status_code=200, content={"message": clean})
+    except Exception as exc:
+        status_code, body = error_payload(exc)
+        return JSONResponse(status_code=status_code, content=body)

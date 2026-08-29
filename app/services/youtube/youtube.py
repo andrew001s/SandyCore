@@ -9,7 +9,12 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
 from app.services.avatar_events import build_system_event
 from app.services.client_settings import load_effective_settings, resolve_feature_flags
-from app.services.gemini import response_gemini_events, response_gemini_rewards, response_sandy
+from app.services.gemini import (
+    response_gemini_events,
+    response_gemini_rewards,
+    response_sandy,
+    should_delete_message,
+)
 from app.services.moderator import check_banned_words
 from app.services.youtube.auth.auth import (
     YouTubeAPIClient,
@@ -402,8 +407,12 @@ async def _handle_chat_message(
     ):
         return
 
-    if await check_banned_words(message_text, user_id) and not (
-        author.get("isChatModerator") or author.get("isChatOwner")
+    # Igual que en Twitch y Kick: la palabra prohibida abre la consulta, pero es
+    # la IA quien decide si el mensaje se borra o solo era una forma de hablar.
+    if (
+        await check_banned_words(message_text, user_id)
+        and not (author.get("isChatModerator") or author.get("isChatOwner"))
+        and await should_delete_message(message_text, user_id)
     ):
         try:
             if message_id:

@@ -31,6 +31,19 @@ class AIPort(ABC):
         capa de servicio, que necesita ver marcas completas para hacerlo bien.
         """
 
+    async def generate_verdict(
+        self,
+        message: str,
+        system_instruction: str,
+    ) -> str:
+        """Una decisión corta, no algo que se vaya a leer en voz alta.
+
+        Por defecto es `generate_text`; los proveedores que distingan el tipo de
+        petición pueden anularlo. Lo usa la moderación, donde la respuesta es un
+        veredicto de dos palabras y trocearla no tiene sentido.
+        """
+        return await self.generate_text(message, system_instruction)
+
     @abstractmethod
     async def generate_structured(
         self, content: str, response_model: type[BaseModel]

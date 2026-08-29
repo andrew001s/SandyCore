@@ -19,6 +19,7 @@ Clasifica el mensaje como PERMITIDO o NO PERMITIDO.
 PERMITIDO: lenguaje fuerte sin intención ofensiva, humor, críticas sin ataque personal.
 NO PERMITIDO: insultos, amenazas, racismo, sexismo, odio, spam, contenido sexual, autolesiones.
 Responde solo "PERMITIDO" o "NO PERMITIDO".
+Nada más: ni explicaciones, ni comillas, ni punto final, ni razonamiento previo.
 Mensaje:
 """
 
@@ -81,9 +82,18 @@ Clasifica el mensaje en JSON según:
 Regla importante:
 - Si el mensaje es saludo, presentación, pregunta sobre tu nombre, identidad, personalidad o conversación casual, clasifícalo como "interacción".
 - Solo usa "orden" cuando el usuario pide cambiar algo operativo del stream.
+- En los modos de chat (only_followers, only_subs, only_emotes, slow) el
+  "order_objective" tiene que ser exactamente "on" o "off", nunca otra palabra.
+- En "title" y "category"/"game" el "order_objective" es el texto nuevo, sin
+  comillas ni la frase que lo pedía.
+- En "clip" no hace falta "order_objective".
 Devuelve solo JSON válido.
 Ejemplos:
 {"type":"orden","order_name":"title","order_objective":"nuevo título"}
+{"type":"orden","order_name":"category","order_objective":"Just Chatting"}
+{"type":"orden","order_name":"only_followers","order_objective":"on"}
+{"type":"orden","order_name":"slow","order_objective":"off"}
+{"type":"orden","order_name":"clip","order_objective":null}
 {"type":"interacción","interaction_name":null,"interaction_objective":null}
 {"type":"statistics","interaction_name":"statistics","interaction_objective":"stream"}
 {"type":"interacción","interaction_name":null,"interaction_objective":null,"user_message":"hola dime cuál es tu nombre"}

@@ -7,7 +7,7 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.use_cases.chat_use_case import ChatUseCase
 from app.services.client_settings import load_effective_settings, resolve_chunk_size
-from app.services.gemini import check_message, response_sandy
+from app.services.gemini import response_sandy, should_delete_message, try_local_task
 from app.services.moderator import check_banned_words
 
 DEFAULT_BOTS = ["streamlabs", "streamelements", "nightbot"]
@@ -108,27 +108,45 @@ class TwitchChatSession:
     async def on_message(self, msg: ChatMessage) -> None:
         print(f"[{self.user_id}] {msg.user.name}: {msg.text}")
         if msg.user.name in self.bots:
+            # Cuenta del bot o de un bot de terceros: ni se modera ni se responde.
+            print(f"[MODERACION] {msg.user.name} está en la lista de bots; se ignora")
             return
 
         settings = await load_effective_settings(self.user_id)
         self.feature_flags = settings.get("feature_flags") or {}
 
-        if (
-            bool(self.feature_flags.get("moderation", True))
-            and await check_banned_words(msg.text, self.user_id)
-            and msg.user.mod is False
-        ):
-            moderation = await check_message(msg.text, self.user_id)
-            if moderation.strip().upper() == "NO PERMITIDO":
-                twitch_instance = self.twitch_bot if self.twitch_bot else self.twitch
-                broadcaster_id = await self._broadcaster_id()
-                await twitch_instance.delete_chat_message(
-                    broadcaster_id, broadcaster_id, msg.id
-                )
-                await self.chat.send_message(
-                    msg.room.name,
-                    f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
-                )
+        # Traza de la moderación: sin ella, un mensaje que no se borra puede ser
+        # el diccionario que no lo vio, el usuario que es mod o la IA que lo
+        # permitió, y desde fuera los tres casos parecen lo mismo.
+        if bool(self.feature_flags.get("moderation", True)):
+            sospechoso = await check_banned_words(msg.text, self.user_id)
+            if not sospechoso:
+                print(f"[MODERACION] Sin coincidencias en el diccionario: {msg.text!r}")
+            elif msg.user.mod:
+                print(f"[MODERACION] {msg.user.name} es moderador; no se le modera")
+        else:
+            sospechoso = False
+            print("[MODERACION] Desactivada en la configuración")
+
+        if sospechoso and msg.user.mod is False:
+            print(f"[MODERACION] Sospechoso de {msg.user.name}: {msg.text!r}")
+            # El diccionario solo levanta la sospecha; quien decide es la IA. Con
+            # modelo local la consulta va y vuelve por el canal del navegador, y
+            # si algo falla `should_delete_message` deja pasar el mensaje en vez
+            # de tumbar el chat.
+            if await should_delete_message(msg.text, self.user_id):
+                try:
+                    twitch_instance = self.twitch_bot if self.twitch_bot else self.twitch
+                    broadcaster_id = await self._broadcaster_id()
+                    await twitch_instance.delete_chat_message(
+                        broadcaster_id, broadcaster_id, msg.id
+                    )
+                    await self.chat.send_message(
+                        msg.room.name,
+                        f"HEY! {msg.user.name} tu mensaje no es permitido, por favor no lo vuelvas a enviar elshan1Nojao ",
+                    )
+                except Exception as exc:
+                    print(f"[MODERACION] No se pudo borrar el mensaje: {repr(exc)}")
                 msg.text = "Mensaje no permitido"
                 return
 
@@ -147,8 +165,16 @@ class TwitchChatSession:
         batch = list(self.chunk_message)
         self.chunk_message.clear()
 
+        entrada = "\n".join(batch)
+
+        # Con modelo local, el navegador resuelve la tarea entera: llama a su
+        # modelo y encadena la voz directamente, igual que hace el micrófono.
+        # Así el audio arranca con la primera frase sin dar la vuelta por aquí.
+        if await try_local_task("chat", entrada, "vtuber", self.user_id):
+            return
+
         try:
-            response = await response_sandy("\n".join(batch), self.user_id)
+            response = await response_sandy(entrada, self.user_id)
         except Exception as exc:
             print(f"[CHAT ERROR] No se pudo generar respuesta: {repr(exc)}")
             response = "No pude responder en este momento."

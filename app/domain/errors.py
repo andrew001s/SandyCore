@@ -33,6 +33,9 @@ CHANNEL_NOT_CONFIGURED = "error.channel-not-configured"
 NO_BROADCAST = "error.no-broadcast"
 SERVICE_NOT_RUNNING = "error.service-not-running"
 STORAGE_UNAVAILABLE = "error.storage-unavailable"
+LOCAL_PROVIDER_UNREACHABLE = "error.local-provider-unreachable"
+ORDER_FAILED = "error.order-failed"
+CATEGORY_NOT_FOUND = "error.category-not-found"
 
 # Genéricos
 NOT_FOUND = "error.not-found"
@@ -56,7 +59,13 @@ DEFAULT_MESSAGES: dict[str, str] = {
     CHANNEL_NOT_CONFIGURED: "Falta configurar el canal. Guarda la configuración o vuelve a vincular la cuenta.",
     NO_BROADCAST: "No hay una transmisión activa en este momento.",
     SERVICE_NOT_RUNNING: "El servicio no está en marcha.",
+    ORDER_FAILED: "No se pudo aplicar la orden en el canal.",
+    CATEGORY_NOT_FOUND: "Twitch no tiene ninguna categoría con ese nombre.",
     STORAGE_UNAVAILABLE: "No se pudo acceder a la base de datos. Inténtalo de nuevo en unos minutos.",
+    LOCAL_PROVIDER_UNREACHABLE: (
+        "No hay ninguna pestaña abierta que atienda al modelo local. Abre el "
+        "panel de Sandy para que pueda responder al chat y a los eventos."
+    ),
     NOT_FOUND: "No se encontró el recurso solicitado.",
     INVALID_REQUEST: "La petición no es válida.",
     PROVIDER_UNAVAILABLE: "El servicio externo no está respondiendo. Inténtalo de nuevo en unos minutos.",
@@ -83,6 +92,9 @@ HTTP_STATUS: dict[str, int] = {
     NO_BROADCAST: 409,
     SERVICE_NOT_RUNNING: 409,
     STORAGE_UNAVAILABLE: 503,
+    LOCAL_PROVIDER_UNREACHABLE: 409,
+    ORDER_FAILED: 409,
+    CATEGORY_NOT_FOUND: 404,
     NOT_FOUND: 404,
     INVALID_REQUEST: 400,
     PROVIDER_UNAVAILABLE: 503,
@@ -196,6 +208,7 @@ _BY_HINT: tuple[tuple[tuple[str, ...], str], ...] = (
     (("no está iniciado", "no hay chat activo", "no está en marcha"), SERVICE_NOT_RUNNING),
     (("supabase", "postgrest", "connection refused", "could not connect"), STORAGE_UNAVAILABLE),
     (("safety", "content filter", "blocked"), CONTENT_BLOCKED),
+    (("orden desconocida",), INVALID_REQUEST),
     (("timed out", "timeout"), TIMEOUT),
 )
 

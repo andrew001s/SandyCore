@@ -10,7 +10,12 @@ from app.core.config import config
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
 from app.services.avatar_events import build_system_event
 from app.services.client_settings import load_effective_settings, resolve_feature_flags
-from app.services.gemini import response_gemini_events, response_gemini_rewards, response_sandy
+from app.services.gemini import (
+    response_gemini_events,
+    response_gemini_rewards,
+    response_sandy,
+    should_delete_message,
+)
 from app.services.kick.auth import auth
 from app.services.moderator import check_banned_words
 
@@ -383,7 +388,12 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
 
     kick_client = await auth.authenticate_kick(user_id)
 
-    if await check_banned_words(message_text, user_id):
+    # El diccionario solo levanta la sospecha: quien decide borrar es la IA, igual
+    # que en Twitch. Antes bastaba con que la palabra apareciera, así que un
+    # "qué idiota soy, jaja" se borraba sin más.
+    if await check_banned_words(message_text, user_id) and await should_delete_message(
+        message_text, user_id
+    ):
         _log_webhook(
             "blocked_banned_words",
             event_type=event_type,

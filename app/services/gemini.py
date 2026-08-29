@@ -1,3 +1,4 @@
+import asyncio
 from collections import deque
 import re
 import unicodedata
@@ -47,6 +48,14 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
     cached = _ai_client_cache.get(cache_key)
     if cached is not None:
         return cached
+
+    if provider == "local":
+        # El modelo vive en la máquina del usuario: la inferencia que arranca en
+        # el backend se delega en su navegador por el bus SSE. No se cachea
+        # porque va atado al usuario.
+        from app.adapters.browser_relay_adapter import BrowserRelayAdapter
+
+        return BrowserRelayAdapter(user_id or get_active_user_id())
 
     if provider == "openrouter":
         openrouter_api_key = settings.get("openrouter_api_key")
@@ -450,11 +459,215 @@ async def stream_sandy_shandrew(
     await mark_activity(user_id)
 
 
-async def check_message(message: str, user_id: str | None = None) -> str:
+async def build_local_context(user_id: str | None = None) -> dict[str, Any]:
+    """Prompts y personalidad listos para un modelo que corre fuera del backend.
+
+    Con proveedor local el navegador habla directo con el modelo del usuario, así
+    que el backend no puede inyectar nada por su cuenta. Aquí entrega lo que solo
+    él conoce —los prompts base, las reglas de formato, el perfil del personaje y
+    el historial— ya compuesto, para que el cliente lo ponga tal cual en el
+    system prompt.
+
+    El historial cambia en cada turno: pídelo antes de cada mensaje si quieres
+    que el modelo tenga memoria de la conversación.
+    """
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["mod"], user_id, persona_name(settings))
-    return response
+    name = persona_name(settings)
+    history = generate_context(user_id)
+
+    def compose(clave: str) -> str:
+        # Mismo formato que usa `client_gemini` para los proveedores en la nube,
+        # para que el modelo local reciba exactamente lo mismo.
+        return f"{prompts[clave]}\nHistorial conversacion: {history}"
+
+    return {
+        "persona_name": name,
+        "stop": build_stop_sequences(name),
+        "history": history,
+        # `system_prompt` es el que necesita el dictáfono: el creador del canal
+        # hablándole a la VTuber. Los demás quedan disponibles por si el cliente
+        # cubre otros casos.
+        "system_prompt": compose("vtuber_shandrew"),
+        "prompts": {
+            "vtuber": compose("vtuber"),
+            "vtuber_shandrew": compose("vtuber_shandrew"),
+            "statistics": compose("statistics"),
+            "rewards": compose("rewards"),
+            "events": compose("events"),
+            "assist": prompts["assist"],
+        },
+    }
+
+
+async def run_local_order(
+    name: str | None, objective: str | None, user_id: str | None = None
+) -> bool:
+    """Ejecuta una orden del stream que el navegador clasificó con su modelo.
+
+    Con proveedor local la clasificación ocurre en el navegador, pero la orden
+    no puede: cambiar el título o el modo de chat necesita el token de Twitch
+    del usuario, que solo vive aquí. El nombre llega de un modelo, así que se
+    valida contra la lista conocida antes de tocar nada del canal.
+    """
+    from app.domain.errors import ORDER_FAILED, AppError
+    from app.services.twitch.events.moderation_handler import (
+        ORDENES,
+        _context,
+        moderator_actions,
+    )
+
+    clave = (name or "").strip().lower()
+    if clave not in ORDENES:
+        raise ValueError(f"Orden desconocida: {name!r}")
+
+    # `moderator_actions` se traga sus errores y devuelve False, así que sin esto
+    # un Twitch desconectado llegaba al usuario como "no se aplicó" y sin motivo.
+    # Aquí la excepción sí sube y se traduce al código que toca.
+    await _context(user_id)
+
+    ejecutada = await moderator_actions(
+        title=objective or "", name=clave, user_id=user_id
+    )
+    if not ejecutada:
+        # Sin esto el navegador recibía un 200 y la VTuber decía "ya está" sin
+        # que se hubiera cambiado nada en el canal.
+        raise AppError(ORDER_FAILED)
+
+    await mark_activity(user_id)
+    return True
+
+
+async def local_stream_stats(user_id: str | None = None) -> str:
+    """Datos del canal para la rama de estadísticas del modelo local."""
+    from app.services.twitch.events.moderation_handler import get_stream_info
+
+    return await get_stream_info(user_id)
+
+
+async def try_local_task(
+    kind: str,
+    message: str,
+    clave_prompt: str,
+    user_id: str | None = None,
+) -> bool:
+    """Delega la respuesta en el navegador cuando el proveedor es el modelo local.
+
+    El backend compone el prompt —persona, reglas e historial— y manda la tarea;
+    el navegador llama a su modelo y encadena la voz sin dar la vuelta por aquí,
+    igual que hace el micrófono. Devuelve False si no aplica, para que el
+    llamador siga por el camino normal.
+    """
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    if settings.get("ai_provider") != "local":
+        return False
+
+    from app.services import ai_relay
+
+    prompts = build_prompt_bundle(settings)
+    name = persona_name(settings)
+    context = generate_context(user_id)
+    full_prompt = f"{prompts[clave_prompt]}\nHistorial conversacion: {context}"
+
+    enviado = await ai_relay.dispatch_task(
+        user_id or get_active_user_id(),
+        kind=kind,
+        message=message,
+        system_instruction=full_prompt,
+        stop=build_stop_sequences(name),
+    )
+    if enviado:
+        await mark_activity(user_id)
+    else:
+        print(
+            "[AI TASK] No hay pestaña abierta para atender el modelo local; "
+            "el mensaje se queda sin respuesta."
+        )
+    return enviado
+
+
+async def record_local_task(
+    message: str, response: str, user_id: str | None = None
+) -> str:
+    """Cierra una tarea resuelta en el navegador: limpia y guarda el historial."""
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    clean = _sanitize_reply(response, persona_name(settings))
+    if clean:
+        _record_exchange("user:" + message, clean, user_id)
+    return clean
+
+
+# Un veredicto de moderación tarda menos que una respuesta hablada, y esperar
+# tres minutos para decidir si se borra un mensaje del chat no sirve de nada:
+# para entonces ya lo ha leído todo el mundo.
+MODERATION_TIMEOUT_SECONDS = 20.0
+
+# "NO PERMITIDO" contiene "PERMITIDO", así que la negación se busca primero y
+# pegada: hasta dos palabras entre medias cubre "no está permitido" sin tragarse
+# un "no, el mensaje es permitido", donde el "no" va por otra cosa.
+_NEGADO_RE = re.compile(r"\bNO\b(?:\s+\w+){0,2}\s+PERMITIDO\b")
+_PERMITIDO_RE = re.compile(r"\bPERMITIDO\b")
+
+
+def parse_moderation_verdict(raw: str) -> bool | None:
+    """True = borrar, False = dejar pasar, None = no se entendió.
+
+    El prompt pide una sola palabra, pero los modelos —sobre todo los locales
+    pequeños— añaden punto final, comillas o una frase alrededor. Comparar por
+    igualdad exacta dejaba pasar todo eso.
+    """
+    texto = unicodedata.normalize("NFKD", raw or "")
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).upper()
+
+    if _NEGADO_RE.search(texto):
+        return True
+    if _PERMITIDO_RE.search(texto):
+        return False
+    return None
+
+
+async def should_delete_message(message: str, user_id: str | None = None) -> bool:
+    """¿La IA dice que este mensaje hay que borrarlo?
+
+    Ante cualquier duda se deja pasar: borrar el mensaje de un espectador por
+    error es visible y no tiene vuelta atrás, mientras que uno que se cuela lo
+    puede quitar el streamer a mano. Por eso un fallo del modelo, un plazo
+    vencido o un veredicto ininteligible no borran nada.
+    """
+    try:
+        veredicto = await asyncio.wait_for(
+            check_message(message, user_id), MODERATION_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        print(
+            f"[MODERACION] El modelo no contestó en {MODERATION_TIMEOUT_SECONDS:.0f}s; "
+            "el mensaje se deja pasar."
+        )
+        return False
+    except Exception as exc:
+        print(f"[MODERACION] No se pudo consultar al modelo: {repr(exc)}")
+        return False
+
+    decision = parse_moderation_verdict(veredicto)
+    print(f"[MODERACION] Veredicto {veredicto!r} -> borrar={decision}")
+    if decision is None:
+        print(f"[MODERACION] Veredicto ininteligible {veredicto!r}; se deja pasar.")
+        return False
+    return decision
+
+
+async def check_message(message: str, user_id: str | None = None) -> str:
+    """Pide el veredicto al modelo y lo devuelve en crudo.
+
+    No pasa por `client_gemini` a propósito: juzgar un mensaje no depende de la
+    conversación anterior, así que no se le adjunta el historial —gasta tokens y
+    puede sesgar la decisión—, y el texto se devuelve sin sanear porque quien lo
+    interpreta es `parse_moderation_verdict`, que prefiere verlo tal cual.
+    """
+    settings = await load_effective_settings(user_id or get_active_user_id())
+    prompts = build_prompt_bundle(settings)
+    client = await _get_ai_client(user_id)
+    return await client.generate_verdict(message, prompts["mod"])
 
 
 async def response_gemini_rewards(message: str, user_id: str | None = None) -> str:
