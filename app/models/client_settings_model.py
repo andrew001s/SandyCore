@@ -30,7 +30,5 @@ class ClientSettingsModel(BaseModel):
     custom_banned_symbols: Optional[list[str]] = None
     custom_banned_links: Optional[list[str]] = None
     service_mode: Optional[str] = None
-    auto_start_on_live: Optional[bool] = None
-    auto_stop_on_offline: Optional[bool] = None
-    idle_timeout_minutes: Optional[int] = None
     chunk_size: Optional[int] = None
+    onboarding_completed: Optional[bool] = None

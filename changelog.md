@@ -1,3 +1,24 @@
+## v2.6.0 (2026-08-29)
+
+### Feat
+
+- **start_services**: ✨ mejorar manejo de errores y optimizar suscripciones en el arranque
+- **client_settings**: ✨ agregar soporte para el estado de finalización del onboarding
+- **prompts**: ✨ mejorar instrucciones para responder comentarios del chat
+- ✨ implementar el apagado de servicios al cerrar o recargar la página
+
+## v2.5.0 (2026-08-28)
+
+### Feat
+
+- **gemini**: ✨ actualizar el modelo Gemini a 3.7-flash en la configuración
+
+## v2.4.0 (2026-08-28)
+
+### Feat
+
+- **gemini**: ✨ agregar soporte para el modelo Gemini en la configuración del cliente
+
 ## v2.3.0 (2026-08-28)
 
 ### Feat

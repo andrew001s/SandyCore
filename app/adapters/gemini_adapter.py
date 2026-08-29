@@ -8,7 +8,12 @@ from app.core.ports.ai_port import AIPort
 # Se define aquí y se expone para que el resto del backend no repita la cadena.
 # El valor efectivo sale de la configuración del usuario (ver `_get_ai_client`),
 # así que cambiar de modelo no exige un despliegue.
-DEFAULT_GEMINI_MODEL = "gemini-3.1-flash"
+#
+# Ojo con el nombre: no existe un "gemini-3.1-flash" a secas. La familia 3.1
+# solo publica la variante lite. Modelos Flash vigentes, del más capaz al más
+# barato: gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash,
+# gemini-3.5-flash-lite, gemini-3.1-flash-lite. Los 2.0 están apagados.
+DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
 from app.domain.ai_errors import (
     CONTENT_BLOCKED,
     EMPTY_RESPONSE,
