@@ -108,16 +108,28 @@ class TwitchChatSession:
     async def on_message(self, msg: ChatMessage) -> None:
         print(f"[{self.user_id}] {msg.user.name}: {msg.text}")
         if msg.user.name in self.bots:
+            # Cuenta del bot o de un bot de terceros: ni se modera ni se responde.
+            print(f"[MODERACION] {msg.user.name} está en la lista de bots; se ignora")
             return
 
         settings = await load_effective_settings(self.user_id)
         self.feature_flags = settings.get("feature_flags") or {}
 
-        if (
-            bool(self.feature_flags.get("moderation", True))
-            and await check_banned_words(msg.text, self.user_id)
-            and msg.user.mod is False
-        ):
+        # Traza de la moderación: sin ella, un mensaje que no se borra puede ser
+        # el diccionario que no lo vio, el usuario que es mod o la IA que lo
+        # permitió, y desde fuera los tres casos parecen lo mismo.
+        if bool(self.feature_flags.get("moderation", True)):
+            sospechoso = await check_banned_words(msg.text, self.user_id)
+            if not sospechoso:
+                print(f"[MODERACION] Sin coincidencias en el diccionario: {msg.text!r}")
+            elif msg.user.mod:
+                print(f"[MODERACION] {msg.user.name} es moderador; no se le modera")
+        else:
+            sospechoso = False
+            print("[MODERACION] Desactivada en la configuración")
+
+        if sospechoso and msg.user.mod is False:
+            print(f"[MODERACION] Sospechoso de {msg.user.name}: {msg.text!r}")
             # El diccionario solo levanta la sospecha; quien decide es la IA. Con
             # modelo local la consulta va y vuelve por el canal del navegador, y
             # si algo falla `should_delete_message` deja pasar el mensaje en vez

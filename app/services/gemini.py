@@ -649,6 +649,7 @@ async def should_delete_message(message: str, user_id: str | None = None) -> boo
         return False
 
     decision = parse_moderation_verdict(veredicto)
+    print(f"[MODERACION] Veredicto {veredicto!r} -> borrar={decision}")
     if decision is None:
         print(f"[MODERACION] Veredicto ininteligible {veredicto!r}; se deja pasar.")
         return False
