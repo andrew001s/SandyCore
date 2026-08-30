@@ -174,8 +174,27 @@ def resolve_feature_flags(settings: dict[str, Any] | None) -> dict[str, bool]:
 async def load_effective_settings(user_id: str | None = None) -> dict[str, Any]:
     owner_id = user_id or get_active_user_id()
     if not owner_id:
-        return _defaults()
+        defaults = _defaults()
+        persona = defaults.get("persona_profile") or {}
+        print(
+            f"[PERSONALIDAD] Sin usuario activo, usando plantilla por defecto: "
+            f"'{persona.get('name', 'Desconocido')}'"
+        )
+        return defaults
     stored = await get_user_settings(owner_id)
+    if stored:
+        persona = stored.get("persona_profile") or {}
+        name = persona.get("name") or "Sin nombre definido"
+        archetype = persona.get("archetype") or "Sin arquetipo"
+        print(
+            f"[PERSONALIDAD] Cargada desde Supabase para '{owner_id}': "
+            f"Nombre='{name}', Arquetipo='{archetype}'"
+        )
+    else:
+        print(
+            f"[PERSONALIDAD] No se encontraron ajustes en Supabase para '{owner_id}'; "
+            "usando valores por defecto."
+        )
     return _normalize_settings(stored)
 
 

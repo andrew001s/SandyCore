@@ -182,6 +182,8 @@ def _format_mapping_section(title: str, payload: dict[str, Any]) -> str:
 
 def build_persona_block(settings: dict[str, Any] | None = None) -> str:
     persona = resolve_persona_profile(settings)
+    name = persona.get("name") or "Sin nombre"
+    print(f"[PERSONALIDAD] Inyectando perfil en prompt: '{name}'")
     sections: list[str] = ["Perfil del personaje:"]
 
     base_fields = [
