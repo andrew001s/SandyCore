@@ -104,6 +104,33 @@ _ROLEPLAY = re.compile(r"\*[^*\n]+\*")
 _ITALIC = re.compile(r"_([^_\n]+)_")
 _DASHES = re.compile(r"[\u2014\u2013\u2015]")
 _LEFTOVER = re.compile(r"[*_`#>]")
+# Emojis y pictogramas. El prompt ya pide no usarlos y los modelos los ponen
+# igual; y aquí no es solo estética: esto se lee en voz alta, y el TTS convierte
+# un "✨" en un silencio raro o en la palabra literal.
+#
+# Se listan rangos concretos en vez de "todo lo no ASCII" para no llevarse por
+# delante acentos, eñes ni los signos de apertura del español.
+_EMOJI = re.compile(
+    "["
+    "\U0001F300-\U0001F5FF"  # símbolos y pictogramas
+    "\U0001F600-\U0001F64F"  # emoticonos
+    "\U0001F680-\U0001F6FF"  # transporte y mapas
+    "\U0001F700-\U0001F77F"
+    "\U0001F900-\U0001F9FF"  # suplemento de pictogramas
+    "\U0001FA00-\U0001FAFF"  # extendido A
+    "\U0001F1E6-\U0001F1FF"  # banderas
+    "\U0001F3FB-\U0001F3FF"  # tonos de piel
+    "\u2600-\u26FF"          # símbolos varios
+    "\u2700-\u27BF"          # dingbats (incluye el ✨)
+    "\u2B00-\u2BFF"          # flechas y estrellas
+    "\u2190-\u21FF"          # flechas
+    "\u3030\u303D\u3297\u3299"
+    "\uFE00-\uFE0F"          # selectores de variación
+    "\u200D"                  # unión de emojis compuestos
+    "\u20E3"                  # teclas
+    "]+",
+    flags=re.UNICODE,
+)
 _SPACE_BEFORE_PUNCT = re.compile(r"\s+([,.;:!?…])")
 _WHITESPACE = re.compile(r"\s+")
 
@@ -122,6 +149,7 @@ def strip_formatting(text: str) -> str:
     cleaned = _ROLEPLAY.sub(" ", cleaned)
     cleaned = _ITALIC.sub(r"\1", cleaned)
     cleaned = _DASHES.sub(" ", cleaned)
+    cleaned = _EMOJI.sub(" ", cleaned)
     cleaned = _LEFTOVER.sub("", cleaned)
     cleaned = _WHITESPACE.sub(" ", cleaned)
     cleaned = _SPACE_BEFORE_PUNCT.sub(r"\1", cleaned)
