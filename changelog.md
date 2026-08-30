@@ -1,3 +1,10 @@
+## v2.9.1 (2026-08-30)
+
+### Fix
+
+- **gemini**: agregar reglas para el manejo de respuestas en el perfil
+- **gemini**: 🐛 agregar regex para eliminar emojis y pictogramas en la respuesta
+
 ## v2.9.0 (2026-08-29)
 
 ### Feat
