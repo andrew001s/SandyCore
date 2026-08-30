@@ -226,51 +226,67 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
     override_map = overrides if isinstance(overrides, dict) else {}
     persona_block = build_persona_block(settings)
 
+    base_vtuber = (override_map.get("vtuber") or BASE_PROMPT_VTUBER).strip()
+    if base_vtuber == "Responde como una VTuber amable, sarcástica y breve.":
+        base_vtuber = BASE_PROMPT_VTUBER.strip()
+
     vtuber_prompt = "\n".join(
         part
         for part in [
-            BASE_PROMPT_VTUBER.strip(),
+            base_vtuber,
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Responde en nombre del personaje usando el perfil anterior y el contexto de la conversación.",
         ]
         if part
     )
+
+    base_shandrew = (override_map.get("vtuber_shandrew") or BASE_PROMPT_VTUBER_SHANDREW).strip()
     shandrew_prompt = "\n".join(
         part
         for part in [
-            BASE_PROMPT_VTUBER_SHANDREW.strip(),
+            base_shandrew,
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Si el creador del canal está involucrado, usa cercanía, memoria y contexto, pero sin perder naturalidad.",
         ]
         if part
     )
+
+    base_rewards = (override_map.get("rewards") or BASE_PROMPT_VTUBER_REWARDS).strip()
     rewards_prompt = "\n".join(
         part
         for part in [
-            BASE_PROMPT_VTUBER_REWARDS.strip(),
-            PLAIN_TEXT_RULES.strip(),
-            persona_block,
-        ]
-        if part
-    )
-    events_prompt = "\n".join(
-        part
-        for part in [
-            BASE_PROMPT_VTUBER_EVENTS.strip(),
+            base_rewards,
             PLAIN_TEXT_RULES.strip(),
             persona_block,
         ]
         if part
     )
 
+    base_events = (override_map.get("events") or BASE_PROMPT_VTUBER_EVENTS).strip()
+    events_prompt = "\n".join(
+        part
+        for part in [
+            base_events,
+            PLAIN_TEXT_RULES.strip(),
+            persona_block,
+        ]
+        if part
+    )
+
+    assist_override = override_map.get("assist")
+    if assist_override and "orden" in assist_override and "interacción" in assist_override:
+        assist_prompt = assist_override.strip()
+    else:
+        assist_prompt = BASE_PROMPT_ASSIST.strip()
+
     return {
         "mod": override_map.get("mod") or BASE_PROMPT_MOD.strip(),
         "statistics": override_map.get("statistics") or BASE_PROMPT_GET_STATISTICS.strip(),
-        "vtuber": override_map.get("vtuber") or vtuber_prompt,
-        "vtuber_shandrew": override_map.get("vtuber_shandrew") or shandrew_prompt,
-        "rewards": override_map.get("rewards") or rewards_prompt,
-        "events": override_map.get("events") or events_prompt,
-        "assist": override_map.get("assist") or BASE_PROMPT_ASSIST.strip(),
+        "vtuber": vtuber_prompt,
+        "vtuber_shandrew": shandrew_prompt,
+        "rewards": rewards_prompt,
+        "events": events_prompt,
+        "assist": assist_prompt,
     }
