@@ -1,3 +1,9 @@
+## v2.14.0 (2026-08-30)
+
+### Feat
+
+- ✨ implementar gestión de recompensas personalizadas para Twitch y Kick
+
 ## v2.13.0 (2026-08-30)
 
 ### Feat
