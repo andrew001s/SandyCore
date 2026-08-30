@@ -1,3 +1,9 @@
+## v2.10.0 (2026-08-30)
+
+### Feat
+
+- ✨ introduce personality configuration system and Gemini integration service
+
 ## v2.9.1 (2026-08-30)
 
 ### Fix
