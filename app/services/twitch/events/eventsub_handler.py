@@ -101,7 +101,7 @@ class EventSubSession:
         finally:
             self.instance = None
 
-    async def _reaccionar(self, tipo: str, message: str, clave_prompt: str) -> None:
+    async def _reaccionar(self, tipo: str, message: str, clave_prompt: str, custom_prompt: str | None = None) -> None:
         """Genera y publica la reacción a un evento.
 
         Con modelo local la tarea se delega entera en el navegador, que la
@@ -111,23 +111,30 @@ class EventSubSession:
             return
 
         try:
-            generar = (
-                response_gemini_rewards if clave_prompt == "rewards" else response_gemini_events
-            )
-            response = await generar(message, self.user_id)
+            if clave_prompt == "rewards":
+                response = await response_gemini_rewards(message, self.user_id, custom_prompt)
+            else:
+                response = await response_gemini_events(message, self.user_id)
         except Exception as exc:
             print(f"[EVENTSUB] No se pudo generar la reacción de {self.user_id}: {repr(exc)}")
             return
         await eventsubUseCase.handle_events(tipo, message, response, user_id=self.user_id)
 
     async def chanel_points(self, msg: ChannelPointsCustomRewardRedemptionAddEvent):
-        redemtion = msg.event.reward.title
-        if redemtion not in ALLOWED_REDEMPTIONS:
-            return
+        reward_id = getattr(msg.event.reward, "id", None)
+        reward_title = getattr(msg.event.reward, "title", None)
         user = msg.event.user_name
-        message = f"Redemption: {redemtion} from {user}"
-        redemtion_obj = '{"user": "' + user + '", "reward": "' + redemtion + '"}'
-        await self._reaccionar("reaction", message, "rewards")
+
+        from app.services.storage.supabase_store import get_custom_reward_by_id_or_title
+        db_reward = await get_custom_reward_by_id_or_title(self.user_id, "twitch", reward_id, reward_title)
+        
+        # Si no existe en la base de datos o no está habilitada la reacción, ignoramos
+        if not db_reward or not db_reward.get("enabled"):
+            return
+            
+        custom_prompt = db_reward.get("prompt")
+        message = f"Redemption: {reward_title} from {user}"
+        await self._reaccionar("reaction", message, "rewards", custom_prompt=custom_prompt)
 
     async def on_follow(self, data: eventsub.ChannelFollowEvent):
         user = data.event.user_name

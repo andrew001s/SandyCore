@@ -211,9 +211,24 @@ async def _handle_non_chat_event(
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 
     if event_type == "channel.reward.redemption.updated":
+        reward_obj = event_payload.get("reward")
+        reward_id = None
+        if isinstance(reward_obj, dict):
+            reward_id = reward_obj.get("id") or reward_obj.get("subscription_id")
         reward_title = _extract_reward_title(event_payload)
+
+        from app.services.storage.supabase_store import get_custom_reward_by_id_or_title
+        db_reward = await get_custom_reward_by_id_or_title(
+            user_id, "kick", str(reward_id) if reward_id else None, reward_title
+        )
+
+        # Si no existe en la base de datos o no está habilitada la reacción, ignoramos
+        if not db_reward or not db_reward.get("enabled"):
+            return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
+
+        custom_prompt = db_reward.get("prompt")
         message = f"Kick reward redemption: {reward_title or 'recompensa'} by {actor or 'usuario desconocido'}"
-        response = await response_gemini_rewards(message, user_id)
+        response = await response_gemini_rewards(message, user_id, custom_prompt)
         await event_use_case.handle_events("reaction", message, response, user_id=user_id, voice_enabled=False)
         return JSONResponse(status_code=200, content={"ok": True, "handled": event_type})
 

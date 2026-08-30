@@ -13,6 +13,7 @@ from app.controllers.http.realtime_router import router as realtime_router
 from app.controllers.http.settings_router import router as settings_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
+from app.controllers.http.rewards_router import router as rewards_router
 from app.controllers.websocket.websocket_server import handle_websocket
 from app.domain.errors import error_payload
 
@@ -46,6 +47,7 @@ app.include_router(youtube_router)
 app.include_router(settings_router)
 app.include_router(gemini_router)
 app.include_router(realtime_router)
+app.include_router(rewards_router)
 
 
 @app.websocket("/ws")

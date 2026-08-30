@@ -15,6 +15,7 @@ _TABLE_TWITCH_TOKENS = "twitch_tokens"
 _TABLE_KICK_TOKENS = "kick_tokens"
 _TABLE_KICK_EVENT_SUBSCRIPTIONS = "kick_event_subscriptions"
 _TABLE_YOUTUBE_TOKENS = "youtube_tokens"
+_TABLE_CUSTOM_REWARDS = "custom_rewards"
 
 
 def _supabase_credentials() -> tuple[str, str]:
@@ -439,3 +440,52 @@ def backfill_encrypted_secrets_sync() -> dict[str, int]:
 
 async def backfill_encrypted_secrets() -> dict[str, int]:
     return await asyncio.to_thread(backfill_encrypted_secrets_sync)
+
+
+def get_custom_rewards_sync(user_id: str, platform: str | None = None) -> list[dict[str, Any]]:
+    client = _supabase_client()
+    query = client.table(_TABLE_CUSTOM_REWARDS).select("*").eq("user_id", user_id)
+    if platform:
+        query = query.eq("platform", platform)
+    res = query.execute()
+    return getattr(res, "data", None) or []
+
+
+async def get_custom_rewards(user_id: str, platform: str | None = None) -> list[dict[str, Any]]:
+    return await asyncio.to_thread(get_custom_rewards_sync, user_id, platform)
+
+
+def save_custom_rewards_sync(user_id: str, rewards: list[dict[str, Any]]) -> None:
+    if not rewards:
+        return
+    client = _supabase_client()
+    # Asegurar que el user_id esté presente y coincida
+    for reward in rewards:
+        reward["user_id"] = user_id
+    client.table(_TABLE_CUSTOM_REWARDS).upsert(rewards, on_conflict="user_id,platform,reward_id").execute()
+
+
+async def save_custom_rewards(user_id: str, rewards: list[dict[str, Any]]) -> None:
+    await asyncio.to_thread(save_custom_rewards_sync, user_id, rewards)
+
+
+def get_custom_reward_by_id_or_title_sync(
+    user_id: str, platform: str, reward_id: str | None = None, title: str | None = None
+) -> dict[str, Any] | None:
+    client = _supabase_client()
+    query = client.table(_TABLE_CUSTOM_REWARDS).select("*").eq("user_id", user_id).eq("platform", platform)
+    if reward_id:
+        query = query.eq("reward_id", reward_id)
+    elif title:
+        query = query.eq("title", title)
+    else:
+        return None
+    res = query.execute()
+    data = getattr(res, "data", None) or []
+    return data[0] if data else None
+
+
+async def get_custom_reward_by_id_or_title(
+    user_id: str, platform: str, reward_id: str | None = None, title: str | None = None
+) -> dict[str, Any] | None:
+    return await asyncio.to_thread(get_custom_reward_by_id_or_title_sync, user_id, platform, reward_id, title)

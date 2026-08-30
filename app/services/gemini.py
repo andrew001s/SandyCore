@@ -727,10 +727,28 @@ async def check_message(message: str, user_id: str | None = None) -> str:
     return await client.generate_verdict(message, prompts["mod"])
 
 
-async def response_gemini_rewards(message: str, user_id: str | None = None) -> str:
+async def response_gemini_rewards(
+    message: str, user_id: str | None = None, custom_prompt: str | None = None
+) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
-    prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["rewards"], user_id, persona_name(settings))
+    
+    if custom_prompt and custom_prompt.strip():
+        from app.domain.prompts import PLAIN_TEXT_RULES, build_personality_block
+        persona_block = build_personality_block(settings)
+        rewards_prompt = "\n".join(
+            part
+            for part in [
+                custom_prompt.strip(),
+                PLAIN_TEXT_RULES.strip(),
+                persona_block,
+            ]
+            if part
+        )
+    else:
+        prompts = build_prompt_bundle(settings)
+        rewards_prompt = prompts["rewards"]
+        
+    response = await client_gemini(message, rewards_prompt, user_id, persona_name(settings))
     await mark_activity(user_id)
     return response
 
