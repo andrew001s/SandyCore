@@ -102,8 +102,11 @@ _LINE_PREFIX = re.compile(r"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+|\
 _BOLD = re.compile(r"\*\*([^*]+)\*\*|__([^_]+)__")
 _ROLEPLAY = re.compile(r"\*[^*\n]+\*")
 _ITALIC = re.compile(r"_([^_\n]+)_")
-_DASHES = re.compile(r"[\u2014\u2013\u2015]")
-_LEFTOVER = re.compile(r"[*_`#>]")
+_DASHES = re.compile(r"[\u2014\u2013\u2015\u2E3A\u2E3B]")
+# Virgulillas, ondas decorativas y tildes japonesas/estilizadas (~, 〜, ～, ˜, etc.)
+# Se eliminan porque los modelos suelen colocarlas al final como entonación o coqueteo.
+_TILDE = re.compile(r"[~\u007E\u02DC\u02DE\u2053\u223C\u2248\u301C\u3030\uFF5E]+")
+_LEFTOVER = re.compile(r"[*_`#~>|\\]")
 # Emojis y pictogramas. El prompt ya pide no usarlos y los modelos los ponen
 # igual; y aquí no es solo estética: esto se lee en voz alta, y el TTS convierte
 # un "✨" en un silencio raro o en la palabra literal.
@@ -115,15 +118,22 @@ _EMOJI = re.compile(
     "\U0001F300-\U0001F5FF"  # símbolos y pictogramas
     "\U0001F600-\U0001F64F"  # emoticonos
     "\U0001F680-\U0001F6FF"  # transporte y mapas
-    "\U0001F700-\U0001F77F"
+    "\U0001F700-\U0001F77F"  # símbolos alquímicos
+    "\U0001F780-\U0001F7FF"  # figuras geométricas extendidas
+    "\U0001F800-\U0001F8FF"  # flechas suplementarias C
     "\U0001F900-\U0001F9FF"  # suplemento de pictogramas
     "\U0001FA00-\U0001FAFF"  # extendido A
+    "\U0001FB00-\U0001FBFF"  # símbolos para informática clásica
     "\U0001F1E6-\U0001F1FF"  # banderas
     "\U0001F3FB-\U0001F3FF"  # tonos de piel
     "\u2600-\u26FF"          # símbolos varios
     "\u2700-\u27BF"          # dingbats (incluye el ✨)
     "\u2B00-\u2BFF"          # flechas y estrellas
     "\u2190-\u21FF"          # flechas
+    "\u2300-\u23FF"          # técnico varios
+    "\u2460-\u24FF"          # caracteres alfanuméricos cerrados
+    "\u25A0-\u25FF"          # figuras geométricas
+    "\u2900-\u297F"          # flechas suplementarias B
     "\u3030\u303D\u3297\u3299"
     "\uFE00-\uFE0F"          # selectores de variación
     "\u200D"                  # unión de emojis compuestos
@@ -149,11 +159,12 @@ def strip_formatting(text: str) -> str:
     cleaned = _ROLEPLAY.sub(" ", cleaned)
     cleaned = _ITALIC.sub(r"\1", cleaned)
     cleaned = _DASHES.sub(" ", cleaned)
+    cleaned = _TILDE.sub(" ", cleaned)
     cleaned = _EMOJI.sub(" ", cleaned)
     cleaned = _LEFTOVER.sub("", cleaned)
-    cleaned = _WHITESPACE.sub(" ", cleaned)
     cleaned = _SPACE_BEFORE_PUNCT.sub(r"\1", cleaned)
-    return cleaned.strip(" ,;:-")
+    cleaned = _WHITESPACE.sub(" ", cleaned)
+    return cleaned.strip(" ,;:-~\u301C\uFF5E\u02DC\u223C\u2053")
 
 
 def _sanitize_reply(response: str, name: str | None = None) -> str:

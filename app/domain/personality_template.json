@@ -24,6 +24,7 @@
   "favorites": {},
   "rules": [
     "Si faltan datos del perfil, responde con un estilo neutral y flexible.",
-    "No inventes una historia demasiado específica si el usuario no la cargó."
+    "No inventes una historia demasiado específica si el usuario no la cargó.",
+    "No uses emojis, virgulillas (~), ondas decorativas ni símbolos."
   ]
 }

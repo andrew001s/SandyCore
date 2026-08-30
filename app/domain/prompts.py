@@ -11,6 +11,8 @@ Formato obligatorio de la respuesta (se lee en voz alta):
 - nada de markdown: ni asteriscos, ni guiones bajos, ni almohadillas, ni comillas de código, ni listas
 - nada de acciones ni gestos narrados entre asteriscos, del tipo *se encoge de hombros*
 - nada de rayas ni guiones largos; usa coma o punto
+- PROHIBIDO usar emojis, emoticonos o pictogramas (como ✨, ❤️, 😊)
+- PROHIBIDO usar virgulillas ni ondas decorativas (como ~, 〜, ～) al final ni dentro del texto
 - solo la frase que diría el personaje en voz alta
 """
 
@@ -29,7 +31,7 @@ Eres analista de Twitch. Según estas stats del stream:
 2. Aspectos a mejorar
 3. Sugerencias
 4. Datos curiosos
-Sé directo, amigable. Respuesta limpia, pensada para voz.
+Sé directo, amigable. Respuesta limpia, sin emojis ni virgulillas, pensada para voz.
 Datos:
 """
 
@@ -45,7 +47,7 @@ Reglas:
 - 2 a 4 oraciones
 - máximo 600 caracteres
 - texto limpio
-- sin emojis, comillas, acciones ni marcas de formato extra
+- sin emojis, emoticonos, virgulillas (~), comillas, acciones ni marcas de formato extra
 - no saludes si no aporta
 - adapta el tono al perfil del personaje y al contexto del canal
 """
@@ -56,13 +58,14 @@ Reglas:
 - 2 a 4 oraciones
 - máximo 600 caracteres
 - texto limpio
-- sin emojis, comillas, acciones ni marcas de formato extra
+- sin emojis, emoticonos, virgulillas (~), comillas, acciones ni marcas de formato extra
 - usa el vínculo con el creador solo si el contexto lo justifica
 """
 
 BASE_PROMPT_VTUBER_REWARDS = """
 Reacciona a recompensas de Twitch.
 Responde de forma breve, natural y coherente con la personalidad del personaje.
+Sin emojis ni virgulillas (~).
 Formato de entrada:
 user: nombre, reward: recompensa
 """
@@ -70,6 +73,7 @@ user: nombre, reward: recompensa
 BASE_PROMPT_VTUBER_EVENTS = """
 Reacciona a eventos de Twitch.
 Responde de forma breve, natural y coherente con la personalidad del personaje.
+Sin emojis ni virgulillas (~).
 Formato de entrada:
 user: nombre, event: evento
 """
