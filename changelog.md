@@ -1,3 +1,9 @@
+## v2.11.0 (2026-08-30)
+
+### Feat
+
+- implement prompt management module and client settings service for dynamic personality injection
+
 ## v2.10.0 (2026-08-30)
 
 ### Feat
