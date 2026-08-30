@@ -67,8 +67,11 @@ async def start_services(
     bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        await use_case_start.execute(current_user.user_id, bot)
-        return JSONResponse(status_code=200, content={"message": "Servicios iniciados"})
+        platforms = await use_case_start.execute(current_user.user_id, bot)
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Servicios iniciados", "platforms": platforms},
+        )
     except Exception as e:
         status_code, body = error_payload(e, provider="twitch")
         return JSONResponse(status_code=status_code, content=body)
@@ -79,9 +82,10 @@ async def stop_services(
     bot: bool = False, current_user: ClerkUser = Depends(verify_clerk_session)
 ):
     try:
-        await use_case_stop.execute(current_user.user_id)
+        platforms = await use_case_stop.execute(current_user.user_id)
         return JSONResponse(
-            status_code=200, content={"message": "Automatización pausada"}
+            status_code=200,
+            content={"message": "Automatización pausada", "platforms": platforms},
         )
     except Exception as e:
         status_code, body = error_payload(e, provider="twitch")

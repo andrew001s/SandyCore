@@ -431,11 +431,12 @@ async def verify_webhook_signature(
     try:
         public_key_pem = await get_public_key()
         public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
-        signed_payload = f"{message_id}.{timestamp}.{body.decode('utf-8')}".encode("utf-8")
+        signed_payload = f"{message_id}.{timestamp}.".encode("utf-8") + body
         signature = base64.b64decode(signature_b64)
         public_key.verify(signature, signed_payload, padding.PKCS1v15(), hashes.SHA256())
         return True
-    except Exception:
+    except Exception as exc:
+        print(f"[KICK SIGNATURE] Falló verificación de firma: {repr(exc)}")
         return False
 
 
@@ -520,14 +521,32 @@ async def subscribe_chat_message_events(
         json=payload,
         authenticated=True,
     )
-    subscription_id = _extract_subscription_id(response)
-    if subscription_id:
-        await save_kick_event_subscription(
-            owner_id,
-            subscription_id,
-            ",".join(event["name"] for event in KICK_WEBHOOK_EVENTS),
-            bot,
-        )
+    
+    saved_any = False
+    data = response.get("data")
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                sub_id = item.get("subscription_id") or item.get("id")
+                event_name = item.get("name") or item.get("event")
+                if sub_id and event_name:
+                    await save_kick_event_subscription(
+                        owner_id,
+                        str(sub_id),
+                        str(event_name),
+                        bot,
+                    )
+                    saved_any = True
+
+    if not saved_any:
+        subscription_id = _extract_subscription_id(response)
+        if subscription_id:
+            await save_kick_event_subscription(
+                owner_id,
+                subscription_id,
+                ",".join(event["name"] for event in KICK_WEBHOOK_EVENTS),
+                bot,
+            )
     return response
 
 

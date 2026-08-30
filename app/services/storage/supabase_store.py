@@ -333,6 +333,24 @@ async def delete_youtube_tokens(user_id: str) -> None:
     await asyncio.to_thread(delete_youtube_tokens_sync, user_id)
 
 
+def delete_twitch_tokens_sync(user_id: str) -> None:
+    client = _supabase_client()
+    client.table(_TABLE_TWITCH_TOKENS).delete().eq("user_id", user_id).execute()
+
+
+async def delete_twitch_tokens(user_id: str) -> None:
+    await asyncio.to_thread(delete_twitch_tokens_sync, user_id)
+
+
+def delete_kick_tokens_sync(user_id: str) -> None:
+    client = _supabase_client()
+    client.table(_TABLE_KICK_TOKENS).delete().eq("user_id", user_id).execute()
+
+
+async def delete_kick_tokens(user_id: str) -> None:
+    await asyncio.to_thread(delete_kick_tokens_sync, user_id)
+
+
 def backfill_encrypted_secrets_sync() -> dict[str, int]:
     client = _supabase_client()
     stats = {

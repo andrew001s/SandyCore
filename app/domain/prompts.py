@@ -13,6 +13,7 @@ Formato obligatorio de la respuesta (se lee en voz alta):
 - nada de rayas ni guiones largos; usa coma o punto
 - PROHIBIDO usar emojis, emoticonos o pictogramas (como ✨, ❤️, 😊)
 - PROHIBIDO usar virgulillas ni ondas decorativas (como ~, 〜, ～) al final ni dentro del texto
+- NUNCA comiences tu respuesta escribiendo tu propio nombre (ej. "Sandy Mimoré:", "Sandy:", "sandy:") ni uses formato de diálogo de guion
 - solo la frase que diría el personaje en voz alta
 """
 

@@ -54,24 +54,33 @@ async def start_services(user_id: str | None = None) -> None:
     resolved = _key(user_id)
     session = auth.get_session(resolved, bot=False)
     if session is None:
-        raise RuntimeError("No hay instancia de Twitch autenticada para iniciar servicios")
+        try:
+            _, _, _ = await auth.return_twitch_instance(False, resolved)
+            session = auth.get_session(resolved, bot=False)
+        except Exception:
+            session = None
+
+    if session is None:
+        print(f"[TWITCH LIFECYCLE] Twitch no está autenticado para {resolved}; omitiendo.")
+        state = await _get_state(resolved)
+        state.running = True
+        return
 
     twitch_client = session.client
     if session.profile is None:
         await auth.get_profile_users(bot=False, user_id=resolved)
     broadcaster_id = getattr(session.profile, "id", None)
     if not broadcaster_id:
-        raise RuntimeError("No se pudo resolver el broadcaster para iniciar servicios")
+        print(f"[TWITCH LIFECYCLE] No se pudo resolver broadcaster para {resolved}")
+        state = await _get_state(resolved)
+        state.running = True
+        return
 
     try:
         await setup_chat_instance(twitch_client, user_id=resolved)
         await setup_eventsub_instance(twitch_client, resolved, broadcaster_id)
-    except Exception:
-        from app.services.twitch.twitch import close_chat_instance, close_eventsub
-
-        await close_chat_instance(resolved)
-        await close_eventsub(resolved)
-        raise
+    except Exception as exc:
+        print(f"[TWITCH LIFECYCLE] Error al iniciar chat o EventSub: {repr(exc)}")
 
     state = await _get_state(resolved)
     state.running = True
@@ -105,10 +114,57 @@ def is_running(user_id: str | None = None) -> bool:
 async def get_service_status(user_id: str | None = None) -> dict[str, object]:
     resolved = _key(user_id)
     state = await _get_state(resolved)
+
+    twitch_connected = False
+    kick_connected = False
+    youtube_connected = False
+    kick_running = False
+    youtube_running = False
+
+    try:
+        from app.services.storage.supabase_store import get_twitch_tokens
+        twitch_tokens = await get_twitch_tokens(resolved, False)
+        twitch_connected = bool(twitch_tokens)
+    except Exception:
+        pass
+
+    try:
+        from app.services.storage.supabase_store import get_kick_tokens
+        from app.services.kick.lifecycle import is_running as is_kick_running
+        kick_tokens = await get_kick_tokens(resolved, False)
+        kick_connected = bool(kick_tokens)
+        kick_running = is_kick_running(resolved)
+    except Exception:
+        pass
+
+    try:
+        from app.services.youtube.auth.auth import get_tokens as get_youtube_tokens
+        from app.services.youtube.youtube import _get_state as get_youtube_state
+        yt_tokens = await get_youtube_tokens(resolved)
+        youtube_connected = bool(yt_tokens)
+        yt_state = await get_youtube_state(resolved)
+        youtube_running = bool(yt_state.running)
+    except Exception:
+        pass
+
     return {
         "user_id": resolved,
         "service_mode": "manual",
         "running": state.running,
         "last_activity": state.last_activity.isoformat() if state.last_activity else None,
         "status": "active" if state.running else "inactive",
+        "platforms": {
+            "twitch": {
+                "connected": twitch_connected,
+                "running": bool(state.running and twitch_connected),
+            },
+            "kick": {
+                "connected": kick_connected,
+                "running": kick_running,
+            },
+            "youtube": {
+                "connected": youtube_connected,
+                "running": youtube_running,
+            },
+        },
     }

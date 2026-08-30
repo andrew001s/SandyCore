@@ -173,7 +173,7 @@ def _sanitize_reply(response: str, name: str | None = None) -> str:
     if not text:
         return text
 
-    markers = [m for m in (f"{name}:" if name else "",) if m] + list(_TURN_MARKERS)
+    markers = build_stop_sequences(name)
     lowered = text.lower()
 
     # Un prefijo al inicio es solo la etiqueta del turno propio: se quita.
@@ -195,11 +195,29 @@ def _sanitize_reply(response: str, name: str | None = None) -> str:
 def build_stop_sequences(name: str | None = None) -> list[str]:
     """Secuencias que impiden al modelo escribir el turno siguiente.
 
-    El nombre del personaje va primero porque es la etiqueta con la que más
-    veces reabre la conversación por su cuenta.
+    El nombre del personaje y sus variaciones van primero porque son las etiquetas
+    con las que más veces reabre la conversación por su cuenta.
     """
-    sequences = [f"{name}:"] if name else []
+    sequences = []
+    if name:
+        name_clean = name.strip()
+        sequences.append(f"{name_clean}:")
+        first_word = name_clean.split()[0]
+        if first_word and first_word != name_clean:
+            sequences.append(f"{first_word}:")
+        sequences.append(f"[{name_clean}]:")
+        if first_word and first_word != name_clean:
+            sequences.append(f"[{first_word}]:")
+
     sequences.extend(_TURN_MARKERS)
+
+    # También agregamos variaciones con espacio antes de los dos puntos
+    extra_seqs = []
+    for seq in sequences:
+        if seq.endswith(":"):
+            extra_seqs.append(seq[:-1] + " :")
+    sequences.extend(extra_seqs)
+
     vistos: set[str] = set()
     unicas = []
     for seq in sequences:
