@@ -1,3 +1,9 @@
+## v2.13.0 (2026-08-30)
+
+### Feat
+
+- ✨ mejorar gestión de servicios y manejo de tokens para Twitch, Kick y YouTube
+
 ## v2.12.0 (2026-08-30)
 
 ### Feat
