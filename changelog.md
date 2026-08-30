@@ -1,3 +1,9 @@
+## v2.12.0 (2026-08-30)
+
+### Feat
+
+- add prompt generation module with dynamic persona profile injection and system instructions
+
 ## v2.11.0 (2026-08-30)
 
 ### Feat
