@@ -35,8 +35,10 @@ def _supabase_client():
     from supabase import create_client
 
     try:
+        # pyrefly: ignore [missing-import]
         from supabase.client import ClientOptions
     except ImportError:
+        # pyrefly: ignore [missing-import]
         from supabase.lib.client_options import ClientOptions
 
     return create_client(
