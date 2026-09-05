@@ -23,10 +23,7 @@ YOUTUBE_AUTH_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 YOUTUBE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 YOUTUBE_SCOPES = [
-    "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.force-ssl",
-    "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 YOUTUBE_STATE_TTL_SECONDS = 15 * 60
 DEFAULT_REDIRECT_URI = "/youtube/auth/callback"
