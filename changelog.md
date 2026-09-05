@@ -1,3 +1,10 @@
+## v2.15.0 (2026-09-05)
+
+### Feat
+
+- implement YouTube OAuth2 flow with PKCE and token management services
+- implement YouTube live chat event parsing and authentication services
+
 ## v2.14.0 (2026-08-30)
 
 ### Feat
