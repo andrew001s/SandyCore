@@ -1,3 +1,9 @@
+## v2.16.0 (2026-10-14)
+
+### Feat
+
+- ✨ implement global http client lifecycle and caching for clerk jwks and youtube streams
+
 ## v2.15.0 (2026-09-05)
 
 ### Feat
