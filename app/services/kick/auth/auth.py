@@ -9,7 +9,7 @@ import traceback
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
-import httpx
+from app.core.http import shared_http_client
 # pyrefly: ignore [missing-import]
 from cryptography.hazmat.primitives import hashes, serialization
 # pyrefly: ignore [missing-import]
@@ -239,7 +239,7 @@ class KickAPIClient:
         retry: bool = True,
     ):
         url = f"{self.api_base_url}{path}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with shared_http_client() as client:
             response = await client.request(
                 method,
                 url,
@@ -314,7 +314,7 @@ async def refresh_access_token(user_id: str, refresh_token: str):
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    async with httpx.AsyncClient(timeout=30.0) as session:
+    async with shared_http_client() as session:
         resp = await session.post(
             url,
             data=data,
@@ -348,7 +348,7 @@ async def exchange_authorization_code(
         "redirect_uri": redirect,
         "code_verifier": code_verifier,
     }
-    async with httpx.AsyncClient(timeout=30.0) as session:
+    async with shared_http_client() as session:
         resp = await session.post(
             url,
             data=data,
@@ -373,7 +373,7 @@ async def client_credentials_token():
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    async with httpx.AsyncClient(timeout=30.0) as session:
+    async with shared_http_client() as session:
         resp = await session.post(
             url,
             data=data,
@@ -389,7 +389,7 @@ async def client_credentials_token():
 async def introspect_token(token: str):
     url = f"{config.KICK_API_BASE_URL.rstrip('/')}/public/v1/token/introspect"
     data = {"token": token}
-    async with httpx.AsyncClient(timeout=30.0) as session:
+    async with shared_http_client() as session:
         resp = await session.post(
             url,
             data=data,
@@ -406,7 +406,7 @@ async def get_public_key() -> str:
         return _kick_public_key_pem
 
     url = f"{config.KICK_API_BASE_URL.rstrip('/')}/public/v1/public-key"
-    async with httpx.AsyncClient(timeout=30.0) as session:
+    async with shared_http_client() as session:
         resp = await session.get(url, headers={"Accept": "application/json"})
         if resp.status_code != 200:
             raise Exception(

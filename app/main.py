@@ -1,3 +1,7 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Query, WebSocket
 from starlette.websockets import WebSocketState
 from fastapi.responses import JSONResponse
@@ -26,6 +30,45 @@ tags_metadata = [
     {"name": "AI", "description": "Consultas a la capa de IA."},
 ]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Acotamos el pool de hilos de asyncio por defecto a 8 workers (en lugar de
+    # 32+). En un contenedor de Railway, cada hilo adicional crea un stack de
+    # varios MB y puede abrir una arena glibc propia.
+    loop = asyncio.get_running_loop()
+    executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="sandy_worker")
+    loop.set_default_executor(executor)
+    try:
+        yield
+    finally:
+        executor.shutdown(wait=False)
+        try:
+            from app.core.http import close_http_client
+
+            await close_http_client()
+        except Exception:
+            pass
+        try:
+            from app.services.twitch.auth.auth import close_all_twitch_sessions
+
+            await close_all_twitch_sessions()
+        except Exception:
+            pass
+        try:
+            from app.services.twitch.chat.chat_handler import close_all_chats
+
+            await close_all_chats()
+        except Exception:
+            pass
+        try:
+            from app.services.twitch.events.eventsub_handler import close_all_eventsub
+
+            await close_all_eventsub()
+        except Exception:
+            pass
+
+
 app = FastAPI(
     title="Sandy Core IA API",
     description="API para autenticación con Clerk, persistencia en SQLite y control de Twitch/IA.",
@@ -34,6 +77,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 configure_rollbar(app)
 configure_cors(app)

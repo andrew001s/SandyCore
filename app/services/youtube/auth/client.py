@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-import httpx
+from app.core.http import get_http_client
 
 YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
 
@@ -50,14 +50,14 @@ class YouTubeAPIClient:
         retry: bool = True,
     ) -> Any:
         url = f"{self.api_base_url}{path}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.request(
-                method,
-                url,
-                params=params,
-                json=json_body,
-                headers=self._headers(),
-            )
+        response = await get_http_client().request(
+            method,
+            url,
+            params=params,
+            json=json_body,
+            headers=self._headers(),
+            timeout=30.0,
+        )
 
         if response.status_code in (401, 403) and retry:
             await self._refresh_if_needed()

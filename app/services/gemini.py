@@ -22,12 +22,29 @@ class Order(BaseModel):
 # Historial de conversación por usuario. Con un solo deque global, el contexto
 # de un streamer terminaba dentro del prompt de otro.
 HISTORY_MAX_LEN = 10
+_MAX_USER_HISTORIES = 256
+_MAX_AI_CLIENT_CACHE = 16
 _history_by_user: dict[str, deque[str]] = {}
-_ai_client_cache: dict[tuple[str, str, str], AIPort] = {}
+_ai_client_cache: dict[tuple[str, str, str, str], AIPort] = {}
 
 
 def _history_key(user_id: str | None = None) -> str:
     return str(user_id or get_active_user_id() or "__sin_usuario__")
+
+
+def _store_ai_client(key: tuple[str, str, str, str], client: AIPort) -> None:
+    if len(_ai_client_cache) >= _MAX_AI_CLIENT_CACHE and key not in _ai_client_cache:
+        oldest_key = next(iter(_ai_client_cache))
+        _ai_client_cache.pop(oldest_key, None)
+    _ai_client_cache[key] = client
+
+
+def ai_client_cache_size() -> int:
+    return len(_ai_client_cache)
+
+
+def clear_ai_client_cache() -> None:
+    _ai_client_cache.clear()
 
 
 def _normalize_label(value: str | None) -> str:
@@ -77,7 +94,7 @@ async def _get_ai_client(user_id: str | None = None) -> AIPort:
             model=settings.get("gemini_model") or DEFAULT_GEMINI_MODEL,
         )
 
-    _ai_client_cache[cache_key] = client
+    _store_ai_client(cache_key, client)
     return client
 
 
@@ -362,6 +379,9 @@ async def client_gemini_order(
 
 def add_to_history(message: str, user_id: str | None = None):
     key = _history_key(user_id)
+    if key not in _history_by_user and len(_history_by_user) >= _MAX_USER_HISTORIES:
+        oldest_key = next(iter(_history_by_user))
+        _history_by_user.pop(oldest_key, None)
     history = _history_by_user.get(key)
     if history is None:
         history = deque(maxlen=HISTORY_MAX_LEN)

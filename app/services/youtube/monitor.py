@@ -68,7 +68,9 @@ class LiveChatMonitor:
         await save_effective_settings(payload, self.user_id)
 
     async def _discover_broadcast(self) -> tuple[dict[str, Any], dict[str, Any], str]:
-        channel = await self.client.get_channel()
+        if not getattr(self, "_cached_channel", None):
+            self._cached_channel = await self.client.get_channel()
+        channel = self._cached_channel
         if not channel:
             return {}, {}, ""
 
@@ -107,6 +109,7 @@ class LiveChatMonitor:
 
         state = await _get_state(self.user_id)
         print(f"[YOUTUBE MONITOR] Iniciando monitor de chat de YouTube para {self.user_id}")
+        idle_interval = 15.0
 
         while state.running and state.armed:
             # 1. Si no tenemos live_chat_id enlazado, intentamos descubrirlo
@@ -121,17 +124,20 @@ class LiveChatMonitor:
                         state.live_chat_id = found_chat_id
                         state.broadcast_id = self.broadcast_id
                         state.last_known_live = True
+                        idle_interval = 15.0
                         print(f"[YOUTUBE MONITOR] Directo detectado para {self.user_id}, chat: {found_chat_id}")
                     else:
                         state.last_known_live = False
-                        # Esperar antes de volver a verificar transmisiones en vivo
-                        await asyncio.sleep(15.0)
+                        # Esperar con backoff progresivo (15s -> 30s -> 45s -> 60s)
+                        await asyncio.sleep(idle_interval)
+                        idle_interval = min(idle_interval + 15.0, 60.0)
                         continue
                 except asyncio.CancelledError:
                     break
                 except Exception as exc:
                     print(f"[YOUTUBE MONITOR] Esperando directo de YouTube ({self.user_id}): {repr(exc)}")
-                    await asyncio.sleep(15.0)
+                    await asyncio.sleep(idle_interval)
+                    idle_interval = min(idle_interval + 15.0, 60.0)
                     continue
 
             # 2. Sondeo de mensajes del chat en vivo

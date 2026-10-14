@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import config
+from app.core.http import get_http_client
 from app.core.runtime import set_active_user_id
 
 
@@ -52,11 +53,23 @@ def _clerk_audience() -> str | None:
     return os.getenv("CLERK_AUDIENCE")
 
 
-async def _fetch_jwks() -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(_clerk_jwks_url())
-        response.raise_for_status()
-        return response.json()
+# Las claves públicas de Clerk cambian muy rara vez; descargarlas en cada
+# petición autenticada era una ida y vuelta (y un JSON nuevo en memoria) por
+# request. Si llega un `kid` desconocido se vuelve a descargar una vez.
+_JWKS_TTL_SECONDS = 600.0
+_jwks_cache: tuple[float, dict[str, Any]] | None = None
+
+
+async def _fetch_jwks(force: bool = False) -> dict[str, Any]:
+    global _jwks_cache
+    now = time.monotonic()
+    if not force and _jwks_cache and now - _jwks_cache[0] < _JWKS_TTL_SECONDS:
+        return _jwks_cache[1]
+    response = await get_http_client().get(_clerk_jwks_url(), timeout=10.0)
+    response.raise_for_status()
+    jwks = response.json()
+    _jwks_cache = (now, jwks)
+    return jwks
 
 
 def _jwk_to_public_key(jwk: dict[str, Any]) -> rsa.RSAPublicKey:
@@ -74,17 +87,17 @@ async def _verify_clerk_api_key(api_key: str) -> ClerkUser:
         )
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                "https://api.clerk.com/v1/api_keys/verify",
-                headers={
-                    "Authorization": f"Bearer {config.CLERK_SECRET_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={"secret": api_key},
-            )
-            response.raise_for_status()
-            payload = response.json()
+        response = await get_http_client().post(
+            "https://api.clerk.com/v1/api_keys/verify",
+            headers={
+                "Authorization": f"Bearer {config.CLERK_SECRET_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={"secret": api_key},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -137,9 +150,16 @@ async def _verify_clerk_session_token(token: str) -> ClerkUser:
             )
 
         jwks = await _fetch_jwks()
-        keys = jwks.get("keys", [])
         kid = header.get("kid")
-        key_data = next((key for key in keys if key.get("kid") == kid), None)
+        key_data = next(
+            (key for key in jwks.get("keys", []) if key.get("kid") == kid), None
+        )
+        if key_data is None:
+            # Puede ser una rotación de claves posterior a la caché.
+            jwks = await _fetch_jwks(force=True)
+            key_data = next(
+                (key for key in jwks.get("keys", []) if key.get("kid") == kid), None
+            )
         if key_data is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

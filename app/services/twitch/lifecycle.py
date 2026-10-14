@@ -88,12 +88,17 @@ async def start_services(user_id: str | None = None) -> None:
 
 
 async def stop_services(user_id: str | None = None) -> None:
+    from app.services.twitch.auth import auth
     from app.services.twitch.twitch import close_chat_instance, close_eventsub
 
     resolved = _key(user_id)
     print(f"[TWITCH LIFECYCLE] Deteniendo chat y EventSub para {resolved}")
     await close_chat_instance(resolved)
     await close_eventsub(resolved)
+    try:
+        await auth.close_twitch(resolved)
+    except Exception as exc:
+        print(f"[TWITCH LIFECYCLE] Error al cerrar cliente Twitch de {resolved}: {repr(exc)}")
     state = await _get_state(resolved)
     state.running = False
 

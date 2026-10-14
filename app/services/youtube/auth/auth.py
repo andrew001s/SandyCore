@@ -8,9 +8,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlencode
 
-import httpx
-
 from app.core.config import config
+from app.core.http import get_http_client
 from app.core.runtime import get_active_user_id
 from app.services.storage.supabase_store import (
     delete_youtube_tokens,
@@ -162,12 +161,12 @@ async def exchange_authorization_code(
         "redirect_uri": resolved_redirect_uri,
         "code_verifier": state_payload.code_verifier,
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            YOUTUBE_TOKEN_URL,
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
+    response = await get_http_client().post(
+        YOUTUBE_TOKEN_URL,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30.0,
+    )
     if response.status_code != 200:
         raise Exception(f"No se pudo completar el OAuth de YouTube: {response.status_code} {response.text}")
     payload = response.json()
@@ -224,12 +223,12 @@ async def refresh_access_token(user_id: str, refresh_token: str) -> dict[str, An
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            YOUTUBE_TOKEN_URL,
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
+    response = await get_http_client().post(
+        YOUTUBE_TOKEN_URL,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30.0,
+    )
     if response.status_code != 200:
         raise Exception(f"No se pudo refrescar el token de YouTube: {response.status_code} {response.text}")
     payload = response.json()
@@ -247,12 +246,12 @@ async def refresh_access_token(user_id: str, refresh_token: str) -> dict[str, An
 async def revoke_token(token: str) -> None:
     if not token:
         return
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.post(
-            YOUTUBE_REVOKE_URL,
-            params={"token": token},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
+    response = await get_http_client().post(
+        YOUTUBE_REVOKE_URL,
+        params={"token": token},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=15.0,
+    )
     if response.status_code not in (200, 204):
         raise Exception(f"No se pudo revocar el token de YouTube: {response.status_code} {response.text}")
 

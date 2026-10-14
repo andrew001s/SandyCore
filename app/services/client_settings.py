@@ -1,4 +1,7 @@
+import copy
 import os
+import time
+from functools import lru_cache
 from typing import Any
 
 from app.core.runtime import get_active_user_id
@@ -67,6 +70,61 @@ DEFAULT_FEATURE_FLAGS = {
     "assist": True,
 }
 
+# Caché de la configuración efectiva por usuario. Sin ella, cada mensaje de
+# chat consultaba Supabase 2 veces (y ~5 cuando llegaba a la IA): un hilo del
+# pool, una petición HTTP, el descifrado Fernet y la plantilla de personalidad
+# leída del disco, una y otra vez. Todas las escrituras pasan por
+# `save_effective_settings`, que invalida la entrada; el TTL solo acota lo
+# desfasado que puede quedar si alguien toca la tabla por fuera.
+SETTINGS_CACHE_TTL_SECONDS = float(os.getenv("SETTINGS_CACHE_TTL_SECONDS", "30"))
+_SETTINGS_CACHE_MAX_ENTRIES = 256
+_settings_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _cache_get(owner_id: str) -> dict[str, Any] | None:
+    entry = _settings_cache.get(owner_id)
+    if entry is None:
+        return None
+    stored_at, value = entry
+    if time.monotonic() - stored_at > SETTINGS_CACHE_TTL_SECONDS:
+        _settings_cache.pop(owner_id, None)
+        return None
+    # Copia: varios llamadores modifican el dict que reciben.
+    return copy.deepcopy(value)
+
+
+def _cache_put(owner_id: str, value: dict[str, Any]) -> None:
+    if SETTINGS_CACHE_TTL_SECONDS <= 0:
+        return
+    if len(_settings_cache) >= _SETTINGS_CACHE_MAX_ENTRIES:
+        now = time.monotonic()
+        for key, (stored_at, _) in list(_settings_cache.items()):
+            if now - stored_at > SETTINGS_CACHE_TTL_SECONDS:
+                _settings_cache.pop(key, None)
+        if len(_settings_cache) >= _SETTINGS_CACHE_MAX_ENTRIES:
+            # Sigue lleno de entradas vigentes: fuera la más antigua.
+            oldest = min(_settings_cache, key=lambda k: _settings_cache[k][0])
+            _settings_cache.pop(oldest, None)
+    _settings_cache[owner_id] = (time.monotonic(), copy.deepcopy(value))
+
+
+def invalidate_settings_cache(user_id: str | None = None) -> None:
+    """Olvida la configuración cacheada de un usuario (o de todos)."""
+    if user_id is None:
+        _settings_cache.clear()
+    else:
+        _settings_cache.pop(str(user_id), None)
+
+
+def settings_cache_size() -> int:
+    return len(_settings_cache)
+
+
+@lru_cache(maxsize=1)
+def _personality_template() -> dict[str, Any]:
+    # El fichero viene con el despliegue y no cambia en caliente.
+    return load_personality_template()
+
 
 def _merge_dicts(base: dict[str, Any], override: dict[str, Any] | None) -> dict[str, Any]:
     payload = dict(base)
@@ -99,7 +157,7 @@ def _defaults() -> dict[str, Any]:
         "language": os.getenv("LANGUAGE", "es-ES"),
         "fish_audio_key": os.getenv("FISH_AUDIO_KEY"),
         "voice_id": os.getenv("VOICE_ID"),
-        "persona_profile": load_personality_template(),
+        "persona_profile": copy.deepcopy(_personality_template()),
         "youtube_channel_id": None,
         "youtube_channel_title": None,
         "youtube_broadcast_id": None,
@@ -181,6 +239,10 @@ async def load_effective_settings(user_id: str | None = None) -> dict[str, Any]:
             f"'{persona.get('name', 'Desconocido')}'"
         )
         return defaults
+    owner_id = str(owner_id)
+    cached = _cache_get(owner_id)
+    if cached is not None:
+        return cached
     stored = await get_user_settings(owner_id)
     if stored:
         persona = stored.get("persona_profile") or {}
@@ -195,7 +257,9 @@ async def load_effective_settings(user_id: str | None = None) -> dict[str, Any]:
             f"[PERSONALIDAD] No se encontraron ajustes en Supabase para '{owner_id}'; "
             "usando valores por defecto."
         )
-    return _normalize_settings(stored)
+    effective = _normalize_settings(stored)
+    _cache_put(owner_id, effective)
+    return effective
 
 
 async def save_effective_settings(
@@ -211,7 +275,11 @@ async def save_effective_settings(
     current["tts_provider"] = normalize_tts_provider(current.get("tts_provider"))
     current["service_mode"] = "manual"
     current["onboarding_completed"] = bool(current.get("onboarding_completed"))
-    await upsert_user_settings(
-        owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)
-    )
+    try:
+        await upsert_user_settings(
+            owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)
+        )
+    finally:
+        # También si falla: no sabemos qué quedó guardado.
+        invalidate_settings_cache(owner_id)
     return current
