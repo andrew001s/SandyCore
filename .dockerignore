@@ -1,0 +1,35 @@
+# Git y CI/CD
+.git
+.github
+.gitignore
+
+# Entornos virtuales y dependencias locales
+.venv
+venv
+env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno y secretos (NUNCA incluir en la imagen)
+.env
+.env.*
+!.env.template
+
+# IDE y configuración de agentes
+.vscode
+.agents
+.idea
+*.swp
+*.swo
+
+# Configuración de herramientas
+.pre-commit-config.yaml
+.cz.yaml
+railpack.json
+
+# Documentación y pruebas
+README.md
+LICENSE
+changelog.md

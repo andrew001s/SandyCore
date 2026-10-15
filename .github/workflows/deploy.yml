@@ -1,0 +1,131 @@
+name: Build and Deploy to DigitalOcean Droplet
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: andrew001s/sandycore
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=short
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-droplet:
+    name: Deploy to DigitalOcean Droplet
+    needs: build-and-push
+    if: ${{ secrets.DO_DROPLET_HOST != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_DROPLET_HOST }}
+          username: ${{ secrets.DO_SSH_USER || 'root' }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_SSH_PORT || 22 }}
+          source: "docker-compose.yml"
+          target: "/opt/sandycore"
+          overwrite: true
+
+      - name: Sync .env to Droplet from GitHub Secrets (if ENV_FILE secret is configured)
+        if: ${{ secrets.ENV_FILE != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_DROPLET_HOST }}
+          username: ${{ secrets.DO_SSH_USER || 'root' }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_SSH_PORT || 22 }}
+          script: |
+            mkdir -p /opt/sandycore
+            cat <<'EOF' > /opt/sandycore/.env
+            ${{ secrets.ENV_FILE }}
+            EOF
+            chmod 600 /opt/sandycore/.env
+            echo "✅ Archivo /opt/sandycore/.env sincronizado exitosamente desde GitHub Secret ENV_FILE."
+
+      - name: Pull and Restart Container via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          ACTOR: ${{ github.actor }}
+        with:
+          host: ${{ secrets.DO_DROPLET_HOST }}
+          username: ${{ secrets.DO_SSH_USER || 'root' }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_SSH_PORT || 22 }}
+          envs: GHCR_PAT,ACTOR
+          script: |
+            set -e
+            mkdir -p /opt/sandycore
+            cd /opt/sandycore
+
+            # 1. Verificar si existe el archivo .env en el servidor
+            if [ ! -f .env ]; then
+              echo "⚠️ AVISO: No se encontró /opt/sandycore/.env en el Droplet."
+              echo "Asegúrate de crearlo manualmente o configurar el secreto ENV_FILE en GitHub Secrets."
+            fi
+
+            # 2. Iniciar sesión en GHCR si se proporcionó token personal (para repos/paquetes privados)
+            if [ -n "$GHCR_PAT" ]; then
+              echo "$GHCR_PAT" | docker login ghcr.io -u "$ACTOR" --password-stdin
+            fi
+
+            # 3. Descargar la versión más reciente construida por GitHub Actions
+            docker compose pull
+
+            # 4. Levantar o reiniciar el contenedor con la nueva imagen
+            docker compose up -d --remove-orphans
+
+            # 5. Limpiar capas e imágenes huérfanas antiguas para no saturar el disco
+            docker image prune -f
+
+            echo "✅ Despliegue de SandyCore completado con éxito."
