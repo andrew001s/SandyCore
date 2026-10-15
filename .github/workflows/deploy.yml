@@ -59,7 +59,6 @@ jobs:
   deploy-droplet:
     name: Deploy to DigitalOcean Droplet
     needs: build-and-push
-    if: ${{ secrets.DO_DROPLET_HOST != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -76,45 +75,33 @@ jobs:
           target: "/opt/sandycore"
           overwrite: true
 
-      - name: Sync .env to Droplet from GitHub Secrets (if ENV_FILE secret is configured)
-        if: ${{ secrets.ENV_FILE != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DO_DROPLET_HOST }}
-          username: ${{ secrets.DO_SSH_USER || 'root' }}
-          key: ${{ secrets.DO_SSH_KEY }}
-          port: ${{ secrets.DO_SSH_PORT || 22 }}
-          script: |
-            mkdir -p /opt/sandycore
-            cat <<'EOF' > /opt/sandycore/.env
-            ${{ secrets.ENV_FILE }}
-            EOF
-            chmod 600 /opt/sandycore/.env
-            echo "✅ Archivo /opt/sandycore/.env sincronizado exitosamente desde GitHub Secret ENV_FILE."
-
-      - name: Pull and Restart Container via SSH
+      - name: Deploy and Restart Container via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           ACTOR: ${{ github.actor }}
+          ENV_CONTENT: ${{ secrets.ENV_FILE }}
         with:
           host: ${{ secrets.DO_DROPLET_HOST }}
           username: ${{ secrets.DO_SSH_USER || 'root' }}
           key: ${{ secrets.DO_SSH_KEY }}
           port: ${{ secrets.DO_SSH_PORT || 22 }}
-          envs: GHCR_PAT,ACTOR
+          envs: GHCR_PAT,ACTOR,ENV_CONTENT
           script: |
             set -e
             mkdir -p /opt/sandycore
             cd /opt/sandycore
 
-            # 1. Verificar si existe el archivo .env en el servidor
-            if [ ! -f .env ]; then
-              echo "⚠️ AVISO: No se encontró /opt/sandycore/.env en el Droplet."
-              echo "Asegúrate de crearlo manualmente o configurar el secreto ENV_FILE en GitHub Secrets."
+            # 1. Si existe el secreto ENV_FILE en GitHub, escribir /opt/sandycore/.env
+            if [ -n "$ENV_CONTENT" ]; then
+              printf "%s\n" "$ENV_CONTENT" > .env
+              chmod 600 .env
+              echo "✅ Archivo .env sincronizado desde GitHub Secrets."
+            elif [ ! -f .env ]; then
+              echo "⚠️ AVISO: No se encontró /opt/sandycore/.env en el Droplet ni el secreto ENV_FILE en GitHub."
             fi
 
-            # 2. Iniciar sesión en GHCR si se proporcionó token personal (para repos/paquetes privados)
+            # 2. Iniciar sesión en GHCR si se proporcionó token
             if [ -n "$GHCR_PAT" ]; then
               echo "$GHCR_PAT" | docker login ghcr.io -u "$ACTOR" --password-stdin
             fi
@@ -125,7 +112,7 @@ jobs:
             # 4. Levantar o reiniciar el contenedor con la nueva imagen
             docker compose up -d --remove-orphans
 
-            # 5. Limpiar capas e imágenes huérfanas antiguas para no saturar el disco
+            # 5. Limpiar capas e imágenes huérfanas antiguas
             docker image prune -f
 
             echo "✅ Despliegue de SandyCore completado con éxito."
