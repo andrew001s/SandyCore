@@ -1,3 +1,9 @@
+## v2.17.1 (2026-10-15)
+
+### Fix
+
+- **ci**: remove secrets from if expression in deploy workflow
+
 ## v2.17.0 (2026-10-15)
 
 ### Feat
