@@ -1,8 +1,8 @@
-## v2.17.1 (2026-10-15)
+## v2.18.0 (2026-10-15)
 
-### Fix
+### Feat
 
-- **ci**: remove secrets from if expression in deploy workflow
+- **gateway**: add Caddy reverse proxy for automated HTTPS/SSL, DNS routing for `api.sandystudio.net`, and shared Docker network for Next.js frontend coexistence
 
 ## v2.17.0 (2026-10-15)
 

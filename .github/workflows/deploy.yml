@@ -64,14 +64,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy docker-compose.yml to Droplet
+      - name: Copy docker-compose.yml and Caddyfile to Droplet
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DO_DROPLET_HOST }}
           username: ${{ secrets.DO_SSH_USER || 'root' }}
           key: ${{ secrets.DO_SSH_KEY }}
           port: ${{ secrets.DO_SSH_PORT || 22 }}
-          source: "docker-compose.yml"
+          source: "docker-compose.yml,Caddyfile"
           target: "/opt/sandycore"
           overwrite: true
 
@@ -109,10 +109,13 @@ jobs:
             # 3. Descargar la versión más reciente construida por GitHub Actions
             docker compose pull
 
-            # 4. Levantar o reiniciar el contenedor con la nueva imagen
+            # 4. Levantar o reiniciar servicios (SandyCore y Caddy Gateway)
             docker compose up -d --remove-orphans
 
-            # 5. Limpiar capas e imágenes huérfanas antiguas
+            # 5. Recargar configuración de Caddy en caliente si ya estaba corriendo
+            docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+
+            # 6. Limpiar capas e imágenes huérfanas antiguas
             docker image prune -f
 
             echo "✅ Despliegue de SandyCore completado con éxito."

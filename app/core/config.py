@@ -43,7 +43,7 @@ class Config:
         origin.strip()
         for origin in os.getenv(
             "FRONTEND_ORIGINS",
-            "https://www.sandystudio.net,http://localhost:3000,http://127.0.0.1:3000",
+            "https://sandystudio.net,https://www.sandystudio.net,http://localhost:3000,http://127.0.0.1:3000",
         ).split(",")
         if origin.strip()
     ]

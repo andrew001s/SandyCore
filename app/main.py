@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Sandy Core IA API",
     description="API para autenticación con Clerk, persistencia en SQLite y control de Twitch/IA.",
-    version="2.17.1",
+    version="2.18.0",
     openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",

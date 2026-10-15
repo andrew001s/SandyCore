@@ -1,0 +1,14 @@
+# ==============================================================================
+# Caddyfile: Reverse Proxy Gateway para SandyStudio
+# Maneja HTTPS/SSL automático para Backend (FastAPI) y Frontend (Next.js)
+# ==============================================================================
+
+api.sandystudio.net {
+    encode gzip zstd
+    reverse_proxy sandycore:8000
+}
+
+sandystudio.net, www.sandystudio.net {
+    encode gzip zstd
+    reverse_proxy sandyfrontend:3000
+}
