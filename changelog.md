@@ -1,3 +1,9 @@
+## v2.17.0 (2026-10-15)
+
+### Feat
+
+- add Docker configuration, compose setup, and CI/CD deployment workflow
+
 ## v2.16.0 (2026-10-14)
 
 ### Feat
