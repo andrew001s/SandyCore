@@ -1,3 +1,9 @@
+## v2.18.1 (2026-10-15)
+
+### Fix
+
+- **ci**: sync commitizen version with current release
+
 ## v2.18.0 (2026-10-15)
 
 ### Feat
