@@ -6,7 +6,12 @@ import app.services.twitch.auth.auth as auth
 from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.use_cases.chat_use_case import ChatUseCase
-from app.services.client_settings import load_effective_settings, resolve_chunk_size
+from app.services.client_settings import (
+    extract_command_message,
+    load_effective_settings,
+    resolve_chat_command,
+    resolve_chunk_size,
+)
 from app.services.gemini import response_sandy, should_delete_message, try_local_task
 from app.services.moderator import check_banned_words
 
@@ -154,16 +159,27 @@ class TwitchChatSession:
             print(f"[TWITCH CHAT] chat_replies desactivado para {self.user_id}")
             return
 
-        self.chunk_message.append(f"{msg.user.name}: {msg.text}")
-        chunk_size = resolve_chunk_size(settings)
-        if len(self.chunk_message) < chunk_size:
-            return
+        command = resolve_chat_command(settings)
+        if command is not None:
+            # Modo comando: sin lote. Solo cuenta el mensaje que invoca al bot y
+            # se procesa únicamente lo que va detrás del comando. Se vacía el
+            # lote por si quedaron mensajes de cuando estaba en modo lote.
+            self.chunk_message.clear()
+            texto = extract_command_message(msg.text, command)
+            if texto is None:
+                return
+            batch = [f"{msg.user.name}: {texto}"]
+        else:
+            self.chunk_message.append(f"{msg.user.name}: {msg.text}")
+            chunk_size = resolve_chunk_size(settings)
+            if len(self.chunk_message) < chunk_size:
+                return
 
-        # El lote se vacía ANTES de llamar a la IA: si la llamada falla o llegan
-        # mensajes mientras está en vuelo, no se mezclan con el lote actual ni
-        # se quedan atascados esperando al siguiente.
-        batch = list(self.chunk_message)
-        self.chunk_message.clear()
+            # El lote se vacía ANTES de llamar a la IA: si la llamada falla o llegan
+            # mensajes mientras está en vuelo, no se mezclan con el lote actual ni
+            # se quedan atascados esperando al siguiente.
+            batch = list(self.chunk_message)
+            self.chunk_message.clear()
 
         entrada = "\n".join(batch)
 

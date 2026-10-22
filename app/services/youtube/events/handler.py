@@ -5,7 +5,12 @@ from typing import Any
 import httpx
 from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
-from app.services.client_settings import load_effective_settings, resolve_feature_flags
+from app.services.client_settings import (
+    extract_command_message,
+    load_effective_settings,
+    resolve_chat_command,
+    resolve_feature_flags,
+)
 from app.services.gemini import (
     response_gemini_events,
     response_gemini_rewards,
@@ -131,7 +136,15 @@ class YouTubeEventHandler:
             print(f"[YOUTUBE CHAT] chat_replies desactivado para {self.user_id}")
             return
 
-        full_message = f"{author_name}: {event.text}".strip()
+        message_text = event.text
+        command = resolve_chat_command(settings)
+        if command is not None:
+            # Modo comando: solo responde a "!comando texto" y procesa el texto.
+            message_text = extract_command_message(event.text, command)
+            if message_text is None:
+                return
+
+        full_message = f"{author_name}: {message_text}".strip()
         voice_enabled = bool(feature_flags.get("voice_replies", True))
 
         # Solo si las respuestas por voz están activadas se delega en el navegador para hablar
