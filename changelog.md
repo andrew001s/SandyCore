@@ -1,3 +1,9 @@
+## v2.19.0 (2026-10-22)
+
+### Feat
+
+- ✨ add chat trigger mode and custom command settings for batch or command-based bot responses
+
 ## v2.18.1 (2026-10-15)
 
 ### Fix
