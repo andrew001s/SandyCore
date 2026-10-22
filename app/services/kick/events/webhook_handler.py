@@ -9,7 +9,12 @@ from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.config import config
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
 from app.services.avatar_events import build_system_event
-from app.services.client_settings import load_effective_settings, resolve_feature_flags
+from app.services.client_settings import (
+    extract_command_message,
+    load_effective_settings,
+    resolve_chat_command,
+    resolve_feature_flags,
+)
 from app.services.gemini import (
     response_gemini_events,
     response_gemini_rewards,
@@ -463,6 +468,20 @@ async def handle_kick_webhook(request: Request) -> JSONResponse:
             bot=bot,
         )
         return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
+
+    command = resolve_chat_command(settings)
+    if command is not None:
+        # Modo comando: solo responde a "!comando texto" y procesa el texto.
+        command_text = extract_command_message(message_text, command)
+        if command_text is None:
+            _log_webhook(
+                "ignored_no_command",
+                event_type=event_type,
+                subscription_id=subscription_id or "missing",
+                bot=bot,
+            )
+            return JSONResponse(status_code=200, content={"ok": True, "ignored": True})
+        message_text = command_text
 
     _log_webhook(
         "processing_chat_message",

@@ -41,6 +41,8 @@ SETTINGS_KEYS = {
     "custom_banned_links",
     "service_mode",
     "chunk_size",
+    "chat_trigger_mode",
+    "chat_command",
     "onboarding_completed",
 }
 
@@ -55,6 +57,16 @@ SENSITIVE_SETTING_KEYS = {
 DEFAULT_CHUNK_SIZE = 3
 CHUNK_SIZE_MIN = 1
 CHUNK_SIZE_MAX = 10
+
+# Cómo se activa la respuesta del bot en el chat:
+# - "batch": se agrupan `chunk_size` mensajes cualquiera y se responde al lote.
+# - "command": solo responde a los mensajes que empiezan por `chat_command`
+#   (p. ej. "!bot hola" -> procesa "hola"), uno a uno y sin agrupar.
+CHAT_TRIGGER_BATCH = "batch"
+CHAT_TRIGGER_COMMAND = "command"
+CHAT_TRIGGER_MODES = {CHAT_TRIGGER_BATCH, CHAT_TRIGGER_COMMAND}
+DEFAULT_CHAT_COMMAND = "!bot"
+CHAT_COMMAND_MAX_LENGTH = 32
 
 # El onboarding antiguo guardaba 'fish' como proveedor de TTS. El valor bueno
 # es 'fish_audio'; se normaliza al leer y al escribir para que un perfil viejo
@@ -171,6 +183,8 @@ def _defaults() -> dict[str, Any]:
         # por su cuenta y quemaba tokens sin que el cliente lo decidiera.
         "service_mode": "manual",
         "chunk_size": int(os.getenv("CHUNK_SIZE", str(DEFAULT_CHUNK_SIZE))),
+        "chat_trigger_mode": CHAT_TRIGGER_BATCH,
+        "chat_command": DEFAULT_CHAT_COMMAND,
         # Vive en la cuenta, no en el navegador: si no, el onboarding reaparece
         # en cada dispositivo, en incógnito y al limpiar el almacenamiento.
         "onboarding_completed": False,
@@ -200,7 +214,59 @@ def _normalize_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
     # Se ignora lo que hubiera guardado: ya no hay otro modo.
     payload["service_mode"] = "manual"
     payload["onboarding_completed"] = bool(payload.get("onboarding_completed"))
+    _normalize_chat_trigger(payload)
     return decrypt_secret_map(payload, SENSITIVE_SETTING_KEYS)
+
+
+def normalize_chat_command(value: Any) -> str:
+    """Comando de activación limpio: una sola palabra, sin espacios, acotada.
+
+    Un valor vacío o inválido vuelve al comando por defecto en vez de dejar al
+    bot en modo comando sin forma de invocarlo.
+    """
+    if not isinstance(value, str):
+        return DEFAULT_CHAT_COMMAND
+    parts = value.strip().split()
+    if not parts:
+        return DEFAULT_CHAT_COMMAND
+    return parts[0][:CHAT_COMMAND_MAX_LENGTH]
+
+
+def _normalize_chat_trigger(payload: dict[str, Any]) -> None:
+    mode = str(payload.get("chat_trigger_mode") or "").strip().lower()
+    payload["chat_trigger_mode"] = (
+        mode if mode in CHAT_TRIGGER_MODES else CHAT_TRIGGER_BATCH
+    )
+    payload["chat_command"] = normalize_chat_command(payload.get("chat_command"))
+
+
+def resolve_chat_command(settings: dict[str, Any] | None) -> str | None:
+    """Comando activo si el modo de activación es por comando; si no, None."""
+    settings = settings or {}
+    mode = str(settings.get("chat_trigger_mode") or "").strip().lower()
+    if mode != CHAT_TRIGGER_COMMAND:
+        return None
+    return normalize_chat_command(settings.get("chat_command"))
+
+
+def extract_command_message(text: str | None, command: str) -> str | None:
+    """Texto tras el comando, o None si el mensaje no lo invoca.
+
+    "!bot hola" -> "hola". Sin distinguir mayúsculas y exigiendo que el comando
+    vaya seguido de un espacio o del final, para que "!botón" no cuente como
+    "!bot". Un comando sin texto ("!bot") también devuelve None: no hay nada
+    que preguntarle a la IA.
+    """
+    if not text or not command:
+        return None
+    stripped = text.strip()
+    if not stripped.lower().startswith(command.lower()):
+        return None
+    rest = stripped[len(command):]
+    if rest and not rest[0].isspace():
+        return None
+    rest = rest.strip()
+    return rest or None
 
 
 def resolve_chunk_size(settings: dict[str, Any] | None) -> int:
@@ -275,6 +341,7 @@ async def save_effective_settings(
     current["tts_provider"] = normalize_tts_provider(current.get("tts_provider"))
     current["service_mode"] = "manual"
     current["onboarding_completed"] = bool(current.get("onboarding_completed"))
+    _normalize_chat_trigger(current)
     try:
         await upsert_user_settings(
             owner_id, encrypt_secret_map(current, SENSITIVE_SETTING_KEYS)

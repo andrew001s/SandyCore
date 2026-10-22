@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ClientSettingsModel(BaseModel):
@@ -31,4 +31,6 @@ class ClientSettingsModel(BaseModel):
     custom_banned_links: Optional[list[str]] = None
     service_mode: Optional[str] = None
     chunk_size: Optional[int] = None
+    chat_trigger_mode: Optional[Literal["batch", "command"]] = None
+    chat_command: Optional[str] = Field(default=None, max_length=32)
     onboarding_completed: Optional[bool] = None
