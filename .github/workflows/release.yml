@@ -27,7 +27,7 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
