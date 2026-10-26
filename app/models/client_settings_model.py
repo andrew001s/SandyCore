@@ -34,3 +34,4 @@ class ClientSettingsModel(BaseModel):
     chat_trigger_mode: Optional[Literal["batch", "command"]] = None
     chat_command: Optional[str] = Field(default=None, max_length=32)
     onboarding_completed: Optional[bool] = None
+    vrm_trigger_rules: Optional[list[dict]] = None

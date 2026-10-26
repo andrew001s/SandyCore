@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from app.core.ports.websocket_port import WebsocketPort
 from app.services.avatar_events import (
     build_action_event,
@@ -40,5 +43,21 @@ class EventSubUseCase:
                     "voice_enabled": voice_enabled,
                 },
             ),
+            user_id,
+        )
+
+    async def publish_avatar_trigger(
+        self, event_name: str, data: dict, *, user_id: str
+    ) -> None:
+        """Forward the original provider event to the avatar trigger graph."""
+        await self.websocket_port.broadcast_message(
+            {
+                "id": f"trigger_{uuid4().hex}",
+                "type": "avatar_trigger",
+                "trigger": event_name,
+                "source": "twitch",
+                "data": data,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
             user_id,
         )

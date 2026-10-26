@@ -125,6 +125,17 @@ class EventSubSession:
         reward_title = getattr(msg.event.reward, "title", None)
         user = msg.event.user_name
 
+        await eventsubUseCase.publish_avatar_trigger(
+            "channel_point_reward",
+            {
+                "user": user,
+                "rewardId": reward_id,
+                "rewardTitle": reward_title,
+                "input": getattr(msg.event, "user_input", None),
+            },
+            user_id=self.user_id,
+        )
+
         from app.services.storage.supabase_store import get_custom_reward_by_id_or_title
         db_reward = await get_custom_reward_by_id_or_title(self.user_id, "twitch", reward_id, reward_title)
         
@@ -138,21 +149,29 @@ class EventSubSession:
 
     async def on_follow(self, data: eventsub.ChannelFollowEvent):
         user = data.event.user_name
+        await eventsubUseCase.publish_avatar_trigger("follow", {"user": user}, user_id=self.user_id)
         message = f"Follow nombre_usuario: {user}"
         await self._reaccionar("reaction", message, "events")
 
     async def on_subscribe(self, data: eventsub.ChannelSubscribeEvent):
         user = data.event.user_name
+        await eventsubUseCase.publish_avatar_trigger("subscribe", {"user": user}, user_id=self.user_id)
         sub = f"Subscribe user: {user}"
         await self._reaccionar("reaction", sub, "events")
 
     async def on_subscribe_message(self, data: eventsub.ChannelSubscriptionMessageEvent):
+        await eventsubUseCase.publish_avatar_trigger(
+            "subscription_message",
+            {"user": data.event.user_name, "message": str(data.event.message)},
+            user_id=self.user_id,
+        )
         user = data.event.user_name
         sub = f"Suscribe user: {user} message: {data.event.message}"
         await self._reaccionar("speech", sub, "events")
 
     async def on_sub_gift(self, data: eventsub.ChannelSubscriptionGiftEvent):
         user = data.event.user_name
+        await eventsubUseCase.publish_avatar_trigger("sub_gift", {"user": user}, user_id=self.user_id)
         gift = f"gift_Sub user: {user}"
         await self._reaccionar("reaction", gift, "events")
 
@@ -160,11 +179,15 @@ class EventSubSession:
         user = data.event.user_name
         cheer = data.event.message
         cheer_amount = data.event.bits
+        await eventsubUseCase.publish_avatar_trigger(
+            "cheer", {"user": user, "bits": cheer_amount, "message": cheer}, user_id=self.user_id
+        )
         cheer = f"cheer user: {user} bits_amount: {cheer_amount} message: {cheer}"
         await self._reaccionar("reaction", cheer, "events")
 
     async def on_raid(self, data: eventsub.ChannelRaidEvent):
         user = data.event.from_broadcaster_user_name
+        await eventsubUseCase.publish_avatar_trigger("raid", {"user": user}, user_id=self.user_id)
         raid = f"Raid: user que raideo: {user}"
         await self._reaccionar("reaction", raid, "events")
 
