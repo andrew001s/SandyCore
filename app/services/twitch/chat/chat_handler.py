@@ -9,7 +9,7 @@ from twitchAPI.chat import Chat, ChatEvent, ChatMessage, EventData
 import app.services.twitch.auth.auth as auth
 from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
-from app.core.use_cases.chat_use_case import ChatUseCase
+from app.core.use_cases.chat_use_case import ChatUseCase, strip_reaction_marker
 from app.core.use_cases.eventsub_use_case import EventSubUseCase
 from app.services.client_settings import (
     extract_command_message,
@@ -333,7 +333,8 @@ class TwitchChatSession:
     ) -> None:
         voice_enabled = bool(self.feature_flags.get("voice_replies", True))
         if not voice_enabled:
-            await self.chat.send_message(msg.room.name, response)
+            clean_response, _, _ = strip_reaction_marker(response)
+            await self.chat.send_message(msg.room.name, clean_response)
             return
         await chat_use_case.process_chunk(
             response,

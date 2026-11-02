@@ -45,6 +45,7 @@ SETTINGS_KEYS = {
     "chat_command",
     "onboarding_completed",
     "vrm_trigger_rules",
+    "automatic_reaction_mappings",
 }
 
 SENSITIVE_SETTING_KEYS = {

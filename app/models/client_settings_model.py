@@ -35,3 +35,4 @@ class ClientSettingsModel(BaseModel):
     chat_command: Optional[str] = Field(default=None, max_length=32)
     onboarding_completed: Optional[bool] = None
     vrm_trigger_rules: Optional[list[dict]] = None
+    automatic_reaction_mappings: Optional[dict[str, str]] = None

@@ -65,19 +65,30 @@ async def gemini_stream(
 
     Eventos SSE:
       delta {"text": "..."}   fragmento listo para mostrar o sintetizar
-      done  {"message": "..."} texto completo (la concatenación de los deltas)
+      done  {"message": "...", "reaction": true|false, "emotion": "happy"} texto y reacción visual
       error {"code", "message", ...}  mismo contrato que el endpoint no-streaming
     """
 
     async def event_generator():
         partes: list[str] = []
+        stream_result: dict[str, bool | str | None] = {}
         try:
             async for piece in stream_sandy_shandrew(
-                message_payload.message, current_user.user_id
+                message_payload.message, current_user.user_id, stream_result
             ):
                 partes.append(piece)
                 yield _sse("delta", {"text": piece})
-            yield _sse("done", {"message": "".join(partes)})
+            payload = {"message": "".join(partes)}
+            print(
+                f"[GEMINI REACTION] user_id={current_user.user_id} "
+                f"decision={stream_result.get('reaction')!r} "
+                f"emotion={stream_result.get('emotion')!r}"
+            )
+            if isinstance(stream_result.get("reaction"), bool):
+                payload["reaction"] = stream_result["reaction"]
+            if isinstance(stream_result.get("emotion"), str):
+                payload["emotion"] = stream_result["emotion"]
+            yield _sse("done", payload)
         except AIProviderError as exc:
             print(f"[GEMINI STREAM] {exc!r}")
             yield _sse("error", exc.to_payload())

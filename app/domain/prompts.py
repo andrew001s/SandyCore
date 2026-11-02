@@ -238,6 +238,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Responde en nombre del personaje usando el perfil anterior y el contexto de la conversación.",
+            "Al final, añade en una línea aparte [[REACTION:<emotion>]] con una emoción de esta lista: happy, sad, angry, surprised, excited, sleepy, thinking, confused, shy; o [[REACTION:none]] si no hace falta una reacción visual. Es metadato, no parte de la voz.",
         ]
         if part
     )
@@ -250,6 +251,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Si el creador del canal está involucrado, usa cercanía, memoria y contexto, pero sin perder naturalidad.",
+            "Al final, añade en una línea aparte [[REACTION:<emotion>]] con una emoción de esta lista: happy, sad, angry, surprised, excited, sleepy, thinking, confused, shy; o [[REACTION:none]] si no hace falta una reacción visual. Es metadato, no parte de la voz.",
         ]
         if part
     )

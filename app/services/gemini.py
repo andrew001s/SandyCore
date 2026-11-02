@@ -254,6 +254,10 @@ def build_stop_sequences(name: str | None = None) -> list[str]:
 # quede sin cerrar se emite igualmente en `close()`.
 _SENTENCE_BOUNDARY = re.compile(r"[.!?…]+[\"'\)\]]*(?=\s)")
 MAX_STREAM_SEGMENT = 240
+_REACTION_MARKER = re.compile(
+    r"\[\[REACTION:(yes|no|none|happy|sad|angry|surprised|excited|sleepy|thinking|confused|shy)\]\]\s*$",
+    re.IGNORECASE,
+)
 
 
 class ReplyStreamer:
@@ -269,6 +273,8 @@ class ReplyStreamer:
         self._pending = ""
         self._parts: list[str] = []
         self._done = False
+        self.reaction: bool | None = None
+        self.emotion: str | None = None
 
     @property
     def full_text(self) -> str:
@@ -280,6 +286,7 @@ class ReplyStreamer:
             return ""
         self._pending += delta
         self._strip_leading_marker()
+        self._extract_reaction_marker()
 
         cut = self._turn_marker_index()
         if cut is not None:
@@ -296,11 +303,20 @@ class ReplyStreamer:
     def close(self) -> str:
         if self._done or not self._pending:
             return ""
+        self._extract_reaction_marker()
         head, self._pending = self._pending, ""
         self._done = True
         return self._emit(head)
 
     # -- interno ------------------------------------------------------------
+
+    def _extract_reaction_marker(self) -> None:
+        match = _REACTION_MARKER.search(self._pending)
+        if match:
+            value = match.group(1).lower()
+            self.reaction = value not in {"no", "none"}
+            self.emotion = value if value not in {"yes", "no", "none"} else None
+            self._pending = self._pending[: match.start()].rstrip()
 
     def _emit(self, text: str) -> str:
         cleaned = strip_formatting(text)
@@ -469,7 +485,9 @@ async def response_sandy_shandrew(message: str, user_id: str | None = None) -> s
 
 
 async def stream_sandy_shandrew(
-    message: str, user_id: str | None = None
+    message: str,
+    user_id: str | None = None,
+    stream_result: dict[str, Any] | None = None,
 ) -> AsyncIterator[str]:
     """Versión en streaming de `response_sandy_shandrew`.
 
@@ -526,6 +544,9 @@ async def stream_sandy_shandrew(
     tail = streamer.close()
     if tail:
         yield tail
+    if stream_result is not None:
+        stream_result["reaction"] = streamer.reaction
+        stream_result["emotion"] = streamer.emotion
 
     if registrar:
         # El historial solo se toca si hubo respuesta, igual que en el modo
