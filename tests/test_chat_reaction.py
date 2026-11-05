@@ -30,6 +30,32 @@ class ChatReactionEventTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(websocket.payload["metadata"]["response"], "Hola, qué sorpresa.")
         self.assertEqual(websocket.user_id, "user-1")
 
+    async def test_missing_reaction_decision_is_sent_as_no_reaction(self):
+        websocket = RecordingWebsocket()
+        use_case = ChatUseCase(websocket)
+
+        await use_case.process_chunk(
+            "Hola, ¿cómo estás?",
+            messages=["viewer: hola"],
+            user_id="user-1",
+        )
+
+        self.assertIs(websocket.payload["reaction"], False)
+        self.assertIsNone(websocket.payload["expression"])
+
+    async def test_explicit_none_marker_remains_no_reaction_without_expression(self):
+        websocket = RecordingWebsocket()
+        use_case = ChatUseCase(websocket)
+
+        await use_case.process_chunk(
+            "Hola. [[REACTION:none]]",
+            messages=["viewer: hola"],
+            user_id="user-1",
+        )
+
+        self.assertIs(websocket.payload["reaction"], False)
+        self.assertIsNone(websocket.payload["expression"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -108,6 +108,15 @@ class OpenRouterAdapter(AIPort):
         elapsed = time.perf_counter() - start
         print(f"[OPENROUTER] Respuesta en {elapsed:.2f}s")
 
+        if not getattr(response, "choices", None):
+            print(
+                "[OPENROUTER] ERROR: respuesta sin choices; "
+                "notificando error sin reintentos."
+            )
+            raise AIProviderError(
+                EMPTY_RESPONSE, provider="openrouter", model=self.model
+            )
+
         # Si el modelo arranca con su propia etiqueta, la secuencia de parada
         # salta en el carácter cero y devuelve vacío. Se reintenta sin ellas y
         # el saneador de la capa superior recorta el turno sobrante.

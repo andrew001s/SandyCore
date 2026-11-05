@@ -57,6 +57,7 @@ class ChatUseCase:
         voice_enabled: bool = True,
     ) -> None:
         clean_response, reaction, emotion = strip_reaction_marker(response)
+        reaction = reaction is True
         print(
             f"[CHAT REACTION] user_id={user_id} "
             f"decision={reaction!r} emotion={emotion!r}"
@@ -75,8 +76,9 @@ class ChatUseCase:
                 "voice_enabled": voice_enabled,
             },
         )
-        if reaction is not None:
-            event["reaction"] = reaction
+        event["reaction"] = reaction
+        if not reaction:
+            event["expression"] = None
         await self.websocket_port.broadcast_message(
             event,
             user_id,

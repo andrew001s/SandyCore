@@ -6,8 +6,11 @@ from typing import Any, AsyncIterator
 
 from pydantic import BaseModel
 
+from app.adapters.websocket_adapter import WebsocketAdapter
 from app.core.runtime import get_active_user_id
 from app.core.ports.ai_port import AIPort
+from app.domain.ai_errors import DEFAULT_MESSAGES, UNKNOWN, classify_ai_error
+from app.services.avatar_events import build_system_event
 from app.services.client_settings import load_effective_settings
 from app.services.twitch.lifecycle import mark_activity
 from app.domain.prompts import build_prompt_bundle, resolve_persona_profile
@@ -433,10 +436,39 @@ def _record_exchange(
     add_to_history(f"{bot_prefix}{response}", user_id)
 
 
+async def _background_ai_response(
+    message: str, prompt: str, user_id: str | None, name: str
+) -> str:
+    try:
+        return await client_gemini(message, prompt, user_id, name)
+    except Exception as exc:
+        owner = user_id
+        if owner:
+            error = classify_ai_error(exc)
+            event = build_system_event(
+                DEFAULT_MESSAGES.get(error.code, DEFAULT_MESSAGES[UNKNOWN]),
+                metadata={
+                    "source": "ai_error",
+                    "user_id": str(owner),
+                    "error": {"code": error.code, "provider": error.provider},
+                },
+            )
+            try:
+                await asyncio.wait_for(
+                    WebsocketAdapter().broadcast_message(event, str(owner), streams_first=True),
+                    timeout=2,
+                )
+            except Exception as notification_error:
+                print(f"[AI ERROR] No se pudo avisar al panel: {type(notification_error).__name__}")
+        raise
+
+
 async def response_sandy(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["vtuber"], user_id, persona_name(settings))
+    response = await _background_ai_response(
+        message, prompts["vtuber"], user_id, persona_name(settings)
+    )
     _record_exchange("user:" + message, response, user_id)
     await mark_activity(user_id)
     return response
@@ -789,7 +821,7 @@ async def response_gemini_rewards(
         prompts = build_prompt_bundle(settings)
         rewards_prompt = prompts["rewards"]
         
-    response = await client_gemini(message, rewards_prompt, user_id, persona_name(settings))
+    response = await _background_ai_response(message, rewards_prompt, user_id, persona_name(settings))
     await mark_activity(user_id)
     return response
 
@@ -797,6 +829,8 @@ async def response_gemini_rewards(
 async def response_gemini_events(message: str, user_id: str | None = None) -> str:
     settings = await load_effective_settings(user_id or get_active_user_id())
     prompts = build_prompt_bundle(settings)
-    response = await client_gemini(message, prompts["events"], user_id, persona_name(settings))
+    response = await _background_ai_response(
+        message, prompts["events"], user_id, persona_name(settings)
+    )
     await mark_activity(user_id)
     return response
