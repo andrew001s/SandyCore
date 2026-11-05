@@ -1,4 +1,3 @@
-import resource
 import sys
 import threading
 from fastapi import APIRouter
@@ -19,6 +18,8 @@ def _get_rss_mb() -> float:
     except Exception:
         pass
     try:
+        import resource
+
         rusage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         if sys.platform == "darwin":
             return round(rusage / (1024.0 * 1024.0), 2)
