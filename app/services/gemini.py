@@ -14,6 +14,7 @@ from app.services.avatar_events import build_system_event
 from app.services.client_settings import load_effective_settings
 from app.services.twitch.lifecycle import mark_activity
 from app.domain.prompts import build_prompt_bundle, resolve_persona_profile
+from app.domain.automatic_reactions import allowed_reaction_emotions, filter_reaction_decision
 
 
 class Order(BaseModel):
@@ -271,7 +272,8 @@ class ReplyStreamer:
     en cuanto termina la primera frase, sin esperar a la respuesta completa.
     """
 
-    def __init__(self, name: str | None = None):
+    def __init__(self, name: str | None = None, allowed_emotions: tuple[str, ...] | None = None):
+        self._allowed_emotions = set(allowed_emotions) if allowed_emotions is not None else None
         self._markers = build_stop_sequences(name)
         self._pending = ""
         self._parts: list[str] = []
@@ -319,6 +321,9 @@ class ReplyStreamer:
             value = match.group(1).lower()
             self.reaction = value not in {"no", "none"}
             self.emotion = value if value not in {"yes", "no", "none"} else None
+            if self._allowed_emotions is not None and self.emotion not in self._allowed_emotions:
+                self.reaction = False
+                self.emotion = None
             self._pending = self._pending[: match.start()].rstrip()
 
     def _emit(self, text: str) -> str:
@@ -566,7 +571,7 @@ async def stream_sandy_shandrew(
     # Igual que en client_gemini: el mensaje no se repite dentro del prompt.
     full_prompt = f"{prompts[clave_prompt]}\nHistorial conversacion: {context}"
 
-    streamer = ReplyStreamer(name)
+    streamer = ReplyStreamer(name, allowed_emotions=allowed_reaction_emotions(settings))
     async for delta in client.generate_text_stream(
         entrada, full_prompt, build_stop_sequences(name)
     ):
@@ -577,8 +582,10 @@ async def stream_sandy_shandrew(
     if tail:
         yield tail
     if stream_result is not None:
-        stream_result["reaction"] = streamer.reaction
-        stream_result["emotion"] = streamer.emotion
+        current_settings = await load_effective_settings(user_id or get_active_user_id())
+        reaction, emotion = filter_reaction_decision(streamer.reaction, streamer.emotion, current_settings)
+        stream_result["reaction"] = reaction
+        stream_result["emotion"] = emotion
 
     if registrar:
         # El historial solo se toca si hubo respuesta, igual que en el modo

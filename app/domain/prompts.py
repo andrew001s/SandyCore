@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from app.core.personality import load_personality_template
+from app.domain.automatic_reactions import reaction_instruction
 
 PLAIN_TEXT_RULES = """
 Formato obligatorio de la respuesta (se lee en voz alta):
@@ -238,7 +239,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Responde en nombre del personaje usando el perfil anterior y el contexto de la conversación.",
-            "Al final, añade [[REACTION:<emotion>]] solo cuando el mensaje provoque una emoción clara e intensa que merezca una reacción visual especial. [[REACTION:none]] es la opción habitual: úsala ante mensajes informativos, saludos, preguntas corrientes o cuando la reacción no aporte algo evidente. No añadas una emoción por defecto ni deduzcas una solo por el tono del mensaje. Emociones permitidas: happy, sad, angry, surprised, excited, sleepy, thinking, confused, shy. El marcador es metadato, no parte de la voz.",
+            reaction_instruction(settings),
         ]
         if part
     )
@@ -251,7 +252,7 @@ def build_prompt_bundle(settings: dict[str, Any] | None = None) -> dict[str, str
             PLAIN_TEXT_RULES.strip(),
             persona_block,
             "Si el creador del canal está involucrado, usa cercanía, memoria y contexto, pero sin perder naturalidad.",
-            "Al final, añade [[REACTION:<emotion>]] solo cuando el mensaje provoque una emoción clara e intensa que merezca una reacción visual especial. [[REACTION:none]] es la opción habitual: úsala ante mensajes informativos, saludos, preguntas corrientes o cuando la reacción no aporte algo evidente. No añadas una emoción por defecto ni deduzcas una solo por el tono del mensaje. Emociones permitidas: happy, sad, angry, surprised, excited, sleepy, thinking, confused, shy. El marcador es metadato, no parte de la voz.",
+            reaction_instruction(settings),
         ]
         if part
     )

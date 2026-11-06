@@ -2,6 +2,8 @@ import re
 
 from app.core.ports.websocket_port import WebsocketPort
 from app.services.avatar_events import build_speech_event, build_system_event
+from app.services.client_settings import load_effective_settings
+from app.domain.automatic_reactions import filter_reaction_decision
 
 
 _REACTION_MARKER = re.compile(
@@ -57,14 +59,15 @@ class ChatUseCase:
         voice_enabled: bool = True,
     ) -> None:
         clean_response, reaction, emotion = strip_reaction_marker(response)
-        reaction = reaction is True
+        settings = await load_effective_settings(user_id)
+        reaction, emotion = filter_reaction_decision(reaction, emotion, settings)
         print(
             f"[CHAT REACTION] user_id={user_id} "
             f"decision={reaction!r} emotion={emotion!r}"
         )
         event = build_speech_event(
             clean_response,
-            emotion=emotion,
+            emotion=emotion or "neutral",
             priority=5,
             interrupt=False,
             scene="chat",
@@ -78,6 +81,7 @@ class ChatUseCase:
         )
         event["reaction"] = reaction
         if not reaction:
+            event["emotion"] = None
             event["expression"] = None
         await self.websocket_port.broadcast_message(
             event,
