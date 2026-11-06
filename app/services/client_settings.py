@@ -46,6 +46,7 @@ SETTINGS_KEYS = {
     "onboarding_completed",
     "vrm_trigger_rules",
     "expression_hotkeys",
+    "expression_intensities",
     "automatic_reaction_mappings",
     "automatic_reaction_scope",
 }

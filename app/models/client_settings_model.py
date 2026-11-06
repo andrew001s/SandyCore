@@ -38,3 +38,4 @@ class ClientSettingsModel(BaseModel):
     automatic_reaction_mappings: Optional[dict[str, str]] = None
     automatic_reaction_scope: Optional[Literal["pngtuber", "live2d", "vrm", "vtubestudio"]] = None
     expression_hotkeys: Optional[dict[Annotated[str, Field(max_length=512)], Annotated[str, Field(max_length=80)]]] = Field(default=None, max_length=256)
+    expression_intensities: Optional[dict[Annotated[str, Field(max_length=512)], Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]]] = Field(default=None, max_length=256)
