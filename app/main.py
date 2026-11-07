@@ -15,6 +15,7 @@ from app.controllers.http.kick_webhook_router import router as kick_webhook_rout
 from app.controllers.http.youtube_router import router as youtube_router
 from app.controllers.http.realtime_router import router as realtime_router
 from app.controllers.http.settings_router import router as settings_router
+from app.controllers.http.support_router import router as support_router
 from app.controllers.http.test_router import router as test_router
 from app.controllers.http.twitch_router import router as twitch_router
 from app.controllers.http.rewards_router import router as rewards_router
@@ -89,6 +90,7 @@ app.include_router(kick_router)
 app.include_router(kick_webhook_router)
 app.include_router(youtube_router)
 app.include_router(settings_router)
+app.include_router(support_router)
 app.include_router(gemini_router)
 app.include_router(realtime_router)
 app.include_router(rewards_router)

@@ -12,6 +12,14 @@ class Config:
     BANNED_WORDS = load_banned_words()
     PERSONALITY = read_file()
     CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
+    KOFI_WATERMARK_ENABLED = os.getenv("KOFI_WATERMARK_ENABLED", "false").lower() == "true"
+    KOFI_WATERMARK_PRODUCT_CODE = os.getenv("KOFI_WATERMARK_PRODUCT_CODE", "")
+    KOFI_VERIFICATION_TOKEN = os.getenv("KOFI_VERIFICATION_TOKEN", "")
+    SUPPORT_BILLING_SECRET = os.getenv("SUPPORT_BILLING_SECRET", "")
+    SUPPORT_OVERLAY_SECRET = os.getenv("SUPPORT_OVERLAY_SECRET", "")
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+    RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "hello@sandystudio.net")
+    RESEND_FROM_NAME = os.getenv("RESEND_FROM_NAME", "Sandy Studio")
     STREAM_TOKEN_SECRET = os.getenv("STREAM_TOKEN_SECRET") or CLERK_SECRET_KEY
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = (
