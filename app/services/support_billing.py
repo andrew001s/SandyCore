@@ -9,7 +9,9 @@ import time
 from collections import OrderedDict, deque
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import HTTPException
 
@@ -21,6 +23,11 @@ from app.services.storage.supabase_store import _supabase_client
 PRICE_CENTS = 300
 CURRENCY = "USD"
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+KOFI_TEST_TRANSACTION_ID = "00000000-1111-2222-3333-444444444444"
+KOFI_TEST_ITEMS = [
+    {"direct_link_code": "1a2b3c4d5e", "variation_name": "Blue", "quantity": 1},
+    {"direct_link_code": "a1b2c3d4e5", "variation_name": "Large", "quantity": 5},
+]
 _REQUEST_WINDOWS = OrderedDict()
 
 
@@ -80,6 +87,135 @@ def license_code() -> str:
 
 def license_code_hash(code: str) -> str:
     return private_hash("license:" + code.strip().upper())
+
+
+def license_email(code: str) -> tuple[str, str]:
+    safe_code = html.escape(code)
+    html_body = f"""\
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Tu código de Sandy Studio Plus</title>
+    <style>
+      @media only screen and (max-width:520px) {{
+        .email-gutter {{ padding:20px 10px !important; }}
+        .email-shell {{ width:100% !important; }}
+        .email-brand, .email-body-pad {{ padding-left:18px !important; padding-right:18px !important; }}
+        .email-hero {{ padding-left:18px !important; padding-right:18px !important; }}
+        .email-layout td {{ display:block !important; width:100% !important; box-sizing:border-box !important; text-align:left !important; }}
+        .email-mascot {{ padding:0 0 8px !important; }}
+        .email-mascot img {{ width:112px !important; }}
+        .email-title {{ font-size:24px !important; }}
+        .email-code {{ font-size:16px !important; letter-spacing:0.5px !important; }}
+      }}
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background:#0E1022;color:#E9E6F5;font-family:'Atkinson Hyperlegible Next',Arial,Helvetica,sans-serif">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">
+      Tu código de un solo uso para activar Sandy Studio Plus ya está listo.
+    </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;table-layout:fixed;background:#0E1022">
+      <tr>
+        <td class="email-gutter" align="center" style="padding:32px 14px">
+          <table class="email-shell" role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;table-layout:fixed;background:#141733;border:1px solid #262A4D;border-radius:16px;overflow:hidden">
+            <tr>
+              <td class="email-brand" style="padding:22px 28px;border-bottom:1px solid #262A4D">
+                <img src="cid:sandy-studio-logo" width="132" alt="Sandy Studio" style="display:block;width:132px;height:auto;border:0">
+              </td>
+            </tr>
+            <tr>
+              <td class="email-hero" style="padding:0 28px;background:#1B1E3D;border-bottom:1px solid #262A4D">
+                <table class="email-layout" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;table-layout:fixed">
+                  <tr>
+                    <td style="padding:28px 0;vertical-align:middle">
+                      <h1 class="email-title" style="margin:0;color:#E9E6F5;font-family:'Bricolage Grotesque','Atkinson Hyperlegible Next',Arial,sans-serif;font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-0.5px">
+                        Tu apoyo ya está listo
+                      </h1>
+                      <p style="margin:12px 0 0;color:#C5C2DF;font-size:15px;line-height:1.55">
+                        Gracias por apoyar el desarrollo de Sandy Studio.
+                      </p>
+                    </td>
+                    <td class="email-mascot" width="140" align="right" style="width:140px;padding:8px 0 0 10px;vertical-align:bottom">
+                      <img src="cid:sandy-coffee-mascot" width="140" alt="Sandy te acompaña para agradecerte tu apoyo" style="display:block;width:140px;max-width:100%;height:auto;border:0">
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-body-pad" style="padding:28px">
+                <p style="margin:0 0 22px;color:#C5C2DF;font-size:15px;line-height:1.6">
+                  Usa este código dentro de tu cuenta para activar Sandy Studio Plus y retirar la marca de agua.
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#0E1022;border:1px solid #51499A;border-radius:12px">
+                  <tr>
+                    <td align="center" style="padding:20px 12px">
+                      <p style="margin:0 0 10px;color:#B9AFFf;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase">
+                        Código de activación
+                      </p>
+                      <p class="email-code" style="margin:0;color:#FFFFFF;font-family:'Courier New',Courier,monospace;font-size:19px;font-weight:700;letter-spacing:1px;line-height:1.5;overflow-wrap:anywhere;word-break:break-all">
+                        {safe_code}
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:22px 0 18px;color:#C5C2DF;font-size:14px;line-height:1.6">
+                  Inicia sesión, abre «Apoyar Sandy» y pega el código. Solo puede utilizarse una vez.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#8C7CFF" style="border-radius:8px">
+                      <a href="https://sandystudio.net/home" style="display:inline-block;padding:12px 18px;color:#0E1022;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none">
+                        Abrir Sandy Studio
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px;border-top:1px solid #262A4D;color:#9A98B8;font-size:12px;line-height:1.55">
+                Si no realizaste esta compra, responde a este correo para solicitar ayuda.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+    text_body = (
+        "Sandy Studio\n\n"
+        "Tu apoyo ya está listo.\n\n"
+        f"Tu código de activación es: {code}\n\n"
+        "Inicia sesión en Sandy Studio, abre «Apoyar Sandy» y pega el código. "
+        "Solo puede utilizarse una vez.\n\n"
+        "Abre Sandy Studio: https://sandystudio.net/home\n\n"
+        "Si no realizaste esta compra, responde a este correo para solicitar ayuda."
+    )
+    return html_body, text_body
+
+
+def license_email_attachments() -> list[dict[str, str]]:
+    asset_dir = Path(__file__).resolve().parents[1] / "assets" / "email"
+    assets = (
+        ("sandy-logo-dark.png", "sandy-studio-logo"),
+        ("sandy-coffee-still.png", "sandy-coffee-mascot"),
+    )
+    return [
+        {
+            "filename": filename,
+            "content": base64.b64encode((asset_dir / filename).read_bytes()).decode(
+                "ascii"
+            ),
+            "content_type": "image/png",
+            "content_id": content_id,
+        }
+        for filename, content_id in assets
+    ]
 
 
 async def rpc(name: str, **params: Any) -> dict:
@@ -193,13 +329,17 @@ async def checkout(user) -> dict:
     }
 
 
-def validate_webhook(payload: dict) -> dict | None:
-    require_configured()
+def verify_kofi_token(payload: dict) -> None:
     token = payload.get("verification_token")
     if not isinstance(token, str) or not hmac.compare_digest(
         token.encode(), config.KOFI_VERIFICATION_TOKEN.encode()
     ):
         raise HTTPException(401, "Not authorized")
+
+
+def validate_webhook(payload: dict) -> dict | None:
+    require_configured()
+    verify_kofi_token(payload)
     if payload.get("type") != "Shop Order":
         return None
     items = payload.get("shop_items")
@@ -262,37 +402,172 @@ def validate_webhook(payload: dict) -> dict | None:
     }
 
 
+async def issue_and_send_license(transaction_id: str, recipient: str) -> bool:
+    code = license_code()
+    issued = await rpc(
+        "support_issue_license_code",
+        p_transaction_id=transaction_id,
+        p_code_hash=license_code_hash(code),
+    )
+    if not isinstance(issued, dict) or "send_required" not in issued:
+        raise HTTPException(
+            503,
+            "La base de datos no tiene aplicada la migración de envío de códigos por correo.",
+        )
+    if not issued["send_required"]:
+        return False
+    html_body, text_body = license_email(code)
+    await send_email(
+        [recipient],
+        "Tu acceso a Sandy Studio Plus está listo",
+        html_body,
+        text=text_body,
+        attachments=license_email_attachments(),
+    )
+    await rpc("support_mark_license_email_sent", p_transaction_id=transaction_id)
+    return True
+
+
 async def webhook(payload: dict) -> dict:
     payment = validate_webhook(payload)
     if payment is None:
         return {"accepted": True, "eligible": False}
-    recorded = await rpc("support_record_payment", p_payment=payment)
-    if payment["state"] == "confirmed" and recorded.get("recorded"):
-        email = payload["email"].strip().casefold()
-        code = license_code()
-        issued = await rpc(
-            "support_issue_license_code",
-            p_transaction_id=payment["transaction_id"],
-            p_code_hash=license_code_hash(code),
+    await rpc("support_record_payment", p_payment=payment)
+    if payment["state"] == "confirmed":
+        await issue_and_send_license(
+            payment["transaction_id"], payload["email"].strip().casefold()
         )
-        if issued.get("created"):
-            safe_code = html.escape(code)
-            await send_email(
-                [email],
-                "Tu código de Sandy Studio Plus",
-                f"""
-                <p>Gracias por apoyar Sandy Studio.</p>
-                <p>Tu código para retirar la marca de agua es:</p>
-                <p style="font-size:20px;font-weight:700;letter-spacing:2px">{safe_code}</p>
-                <p>Inicia sesión en Sandy Studio, pulsa «Apoyar Sandy» e introduce este código.</p>
-                """,
-                text=(
-                    "Gracias por apoyar Sandy Studio.\n\n"
-                    f"Tu código de Sandy Studio Plus es: {code}\n\n"
-                    "Inicia sesión en Sandy Studio y canjea el código desde «Apoyar Sandy»."
-                ),
-            )
     return {"accepted": True}
+
+
+def kofi_test_endpoint_enabled() -> bool:
+    return bool(
+        getattr(config, "KOFI_TEST_ENDPOINT_ENABLED", False)
+        and getattr(config, "SANDY_ENVIRONMENT", "production")
+        in {"development", "test", "staging"}
+        and configured()
+        and bool(getattr(config, "RESEND_API_KEY", ""))
+        and bool(getattr(config, "RESEND_FROM_NAME", "").strip())
+        and re.fullmatch(
+            r"[^\s@]+@[^\s@]+\.[^\s@]+",
+            getattr(config, "RESEND_FROM_EMAIL", "").strip(),
+        )
+        and re.fullmatch(
+            r"[^\s@]+@[^\s@]+\.[^\s@]+", getattr(config, "KOFI_TEST_EMAIL", "")
+        )
+    )
+
+
+def require_kofi_test_endpoint() -> None:
+    if not kofi_test_endpoint_enabled():
+        raise HTTPException(404, "Not found")
+
+
+def is_kofi_shop_test_fixture(payload: dict) -> bool:
+    parsed_url = urlsplit(str(payload.get("url", "")))
+    items = payload.get("shop_items")
+    message_id = payload.get("message_id")
+    timestamp = payload.get("timestamp")
+    try:
+        sent_at = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return bool(
+        isinstance(message_id, str)
+        and re.fullmatch(r"[A-Za-z0-9_-]{8,128}", message_id)
+        and sent_at.tzinfo is not None
+        and payload.get("is_public") is True
+        and payload.get("type") == "Shop Order"
+        and payload.get("from_name") == "Jo Example"
+        and payload.get("email") == "jo.example@example.com"
+        and payload.get("kofi_transaction_id") == KOFI_TEST_TRANSACTION_ID
+        and parsed_url.scheme == "https"
+        and parsed_url.netloc == "ko-fi.com"
+        and parsed_url.path == "/Home/CoffeeShop"
+        and parse_qs(parsed_url.query).get("txid") == [KOFI_TEST_TRANSACTION_ID]
+        and payload.get("amount") == "27.95"
+        and payload.get("currency") == CURRENCY
+        and payload.get("is_subscription_payment") is False
+        and payload.get("is_first_subscription_payment") is False
+        and payload.get("message") is None
+        and items == KOFI_TEST_ITEMS
+    )
+
+
+async def test_webhook(payload: dict) -> dict:
+    require_kofi_test_endpoint()
+    verify_kofi_token(payload)
+    if not is_kofi_shop_test_fixture(payload):
+        raise HTTPException(400, "Expected Ko-fi's Shop Order test fixture")
+    limit_requests("kofi-shop-test", 3)
+
+    fixture_digest = hashlib.sha256(
+        f"{payload['message_id']}:{KOFI_TEST_TRANSACTION_ID}:{payload['timestamp']}".encode()
+    ).hexdigest()
+    transaction_id = f"test-{fixture_digest[:40]}"
+    payment = {
+        "transaction_id": transaction_id,
+        "message_id": f"test-{fixture_digest[40:64]}",
+        "email_hash": private_hash(config.KOFI_TEST_EMAIL),
+        "amount_cents": PRICE_CENTS,
+        "currency": CURRENCY,
+        "product_code": config.KOFI_WATERMARK_PRODUCT_CODE,
+        "state": "confirmed",
+        "review_reason": None,
+        "paid_at": datetime.now(timezone.utc).isoformat(),
+        "is_test": True,
+    }
+    await rpc("support_record_payment", p_payment=payment)
+    email_submitted = await issue_and_send_license(
+        transaction_id, config.KOFI_TEST_EMAIL.strip().casefold()
+    )
+    return {"accepted": True, "test": True, "email_submitted": email_submitted}
+
+
+def support_test_code_enabled() -> bool:
+    test_code = getattr(config, "SUPPORT_TEST_REDEEM_CODE", "").strip().upper()
+    return bool(
+        getattr(config, "SUPPORT_TEST_REDEEM_ENABLED", False)
+        and getattr(config, "SANDY_ENVIRONMENT", "production")
+        in {"development", "test", "staging"}
+        and re.fullmatch(r"SANDY(?:-[A-Z0-9]{4}){4}", test_code)
+    )
+
+
+async def redeem_test_code(user) -> dict:
+    require_session(user)
+    if not support_test_code_enabled():
+        raise HTTPException(404, "El canje de prueba no está disponible.")
+    limit_requests(f"support-test-code:{user.user_id}", 3)
+    addresses = await verified_emails(user.user_id)
+    if not addresses:
+        raise HTTPException(
+            409,
+            "Verifica un correo en tu cuenta de Sandy Studio antes de activar el código.",
+        )
+
+    current = await status(user)
+    if current.get("watermark_free"):
+        return current
+
+    digest = hashlib.sha256(
+        f"support-test-code:{user.user_id}".encode()
+    ).hexdigest()
+    transaction_id = f"test-code-{digest[:40]}"
+    payment = {
+        "transaction_id": transaction_id,
+        "message_id": f"test-code-message-{digest[40:56]}",
+        "email_hash": private_hash(addresses[0]),
+        "amount_cents": PRICE_CENTS,
+        "currency": CURRENCY,
+        "product_code": config.KOFI_WATERMARK_PRODUCT_CODE,
+        "state": "confirmed",
+        "review_reason": None,
+        "paid_at": datetime.now(timezone.utc).isoformat(),
+        "is_test": True,
+    }
+    await rpc("support_record_payment", p_payment=payment)
+    return await status(user, transaction_id)
 
 
 async def redeem_license_code(user, code: str) -> dict:
@@ -301,6 +576,12 @@ async def redeem_license_code(user, code: str) -> dict:
     normalized = code.strip().upper()
     if not re.fullmatch(r"SANDY(?:-[A-Z0-9]{4}){4}", normalized):
         raise HTTPException(400, "El código de Sandy Studio no es válido.")
+    limit_requests(f"redeem:{user.user_id}", 6)
+    expected_test_code = getattr(config, "SUPPORT_TEST_REDEEM_CODE", "").strip().upper()
+    if support_test_code_enabled() and hmac.compare_digest(
+        normalized.encode(), expected_test_code.encode()
+    ):
+        return await redeem_test_code(user)
     result = await rpc(
         "support_redeem_license_code",
         p_user_id=user.user_id,

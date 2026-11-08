@@ -12,9 +12,20 @@ class Config:
     BANNED_WORDS = load_banned_words()
     PERSONALITY = read_file()
     CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
-    KOFI_WATERMARK_ENABLED = os.getenv("KOFI_WATERMARK_ENABLED", "false").lower() == "true"
+    KOFI_WATERMARK_ENABLED = (
+        os.getenv("KOFI_WATERMARK_ENABLED", "false").lower() == "true"
+    )
     KOFI_WATERMARK_PRODUCT_CODE = os.getenv("KOFI_WATERMARK_PRODUCT_CODE", "")
     KOFI_VERIFICATION_TOKEN = os.getenv("KOFI_VERIFICATION_TOKEN", "")
+    KOFI_TEST_ENDPOINT_ENABLED = (
+        os.getenv("KOFI_TEST_ENDPOINT_ENABLED", "false").lower() == "true"
+    )
+    KOFI_TEST_EMAIL = os.getenv("KOFI_TEST_EMAIL", "")
+    SUPPORT_TEST_REDEEM_ENABLED = (
+        os.getenv("SUPPORT_TEST_REDEEM_ENABLED", "false").lower() == "true"
+    )
+    SUPPORT_TEST_REDEEM_CODE = os.getenv("SUPPORT_TEST_REDEEM_CODE", "")
+    SANDY_ENVIRONMENT = os.getenv("SANDY_ENVIRONMENT", "production").strip().lower()
     SUPPORT_BILLING_SECRET = os.getenv("SUPPORT_BILLING_SECRET", "")
     SUPPORT_OVERLAY_SECRET = os.getenv("SUPPORT_OVERLAY_SECRET", "")
     RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
@@ -46,7 +57,9 @@ class Config:
     CLERK_AUDIENCE = os.getenv("CLERK_AUDIENCE")
     ROLLBAR_ACCESS_TOKEN = os.getenv("ROLLBAR_ACCESS_TOKEN")
     ROLLBAR_ENVIRONMENT = os.getenv("ROLLBAR_ENVIRONMENT", "development")
-    ROLLBAR_CODE_VERSION = os.getenv("ROLLBAR_CODE_VERSION") or os.getenv("GIT_SHA") or "1.0.0"
+    ROLLBAR_CODE_VERSION = (
+        os.getenv("ROLLBAR_CODE_VERSION") or os.getenv("GIT_SHA") or "1.0.0"
+    )
     FRONTEND_ORIGINS = [
         origin.strip()
         for origin in os.getenv(

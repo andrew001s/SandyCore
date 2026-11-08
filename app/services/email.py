@@ -26,6 +26,7 @@ async def send_email(
     html: str,
     *,
     text: str | None = None,
+    attachments: Sequence[dict[str, str]] | None = None,
 ) -> str:
     if not config.RESEND_API_KEY:
         raise HTTPException(503, "El servicio de correo no está configurado.")
@@ -41,6 +42,8 @@ async def send_email(
     }
     if text is not None:
         payload["text"] = text
+    if attachments:
+        payload["attachments"] = list(attachments)
     try:
         response = await get_http_client().post(
             RESEND_URL,

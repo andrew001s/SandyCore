@@ -89,14 +89,57 @@ async def limited_body(request: Request, maximum: int) -> bytes:
     return bytes(body)
 
 
-@router.post("/ko-fi/webhook", include_in_schema=False)
-async def receive_legacy_webhook(request: Request):
+@router.post(
+    "/test/ko-fi-webhook",
+    summary="Probar el envío de Sandy Plus desde Ko-fi",
+    description=(
+        "Endpoint de staging para el botón «Send shop order test» de Ko-fi. "
+        "Envía el código a KOFI_TEST_EMAIL y registra una compra sintética. "
+        "Requiere SANDY_ENVIRONMENT=staging, KOFI_TEST_ENDPOINT_ENABLED=true "
+        "y configuración de Ko-fi, Supabase y Resend. En producción responde 404. "
+        "Ko-fi envía el campo data como JSON serializado dentro de un formulario."
+    ),
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/x-www-form-urlencoded": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["data"],
+                        "properties": {
+                            "data": {
+                                "type": "string",
+                                "description": "Payload JSON serializado de la prueba Shop Order de Ko-fi.",
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        "responses": {
+            "200": {"description": "Código de prueba enviado por Resend."},
+            "400": {"description": "El payload no coincide con el fixture de Shop Order."},
+            "401": {"description": "Token de verificación de Ko-fi inválido."},
+            "404": {"description": "Endpoint desactivado o entorno no apto para pruebas."},
+            "413": {"description": "Payload demasiado grande."},
+            "415": {"description": "Se requiere application/x-www-form-urlencoded."},
+        },
+    },
+)
+async def receive_kofi_test_webhook(request: Request):
+    billing.require_kofi_test_endpoint()
+    payload = await read_kofi_payload(request)
+    return private_response(await billing.test_webhook(payload))
+
+
+async def read_kofi_payload(request: Request) -> dict:
     body = await limited_body(request, 65536)
     if (
         request.headers.get("content-type", "").split(";")[0].strip().lower()
         != "application/x-www-form-urlencoded"
     ):
-        raise HTTPException(415, "Expected a form-encoded notification")
+        raise HTTPException(415, "Expected a form-encoded Ko-fi notification")
     try:
         values = parse_qs(body.decode("utf-8"), strict_parsing=True, max_num_fields=4)
         if set(values) != {"data"} or len(values["data"]) != 1:
@@ -104,6 +147,12 @@ async def receive_legacy_webhook(request: Request):
         payload = json.loads(values["data"][0])
         if not isinstance(payload, dict):
             raise ValueError("Invalid data")
+        return payload
     except (ValueError, UnicodeError, KeyError):
         raise HTTPException(400, "Invalid notification") from None
+
+
+@router.post("/ko-fi/webhook", include_in_schema=False)
+async def receive_legacy_webhook(request: Request):
+    payload = await read_kofi_payload(request)
     return private_response(await billing.webhook(payload))
