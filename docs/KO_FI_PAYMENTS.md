@@ -31,7 +31,13 @@ las rutas `/support/` se excluyen de Rollbar para no exportar cuerpos ni recibos
 
 El visor copia un enlace con credencial de lectura limitada en el fragmento `#support=...`, incluso antes del pago. No contiene una sesión Clerk, email, ID de cuenta ni permiso de modificación. El overlay mueve la credencial a sessionStorage y limpia el fragmento de la barra; las rutas de overlay excluyen la inicialización de analítica. La consulta pública usa POST sin cookies y devuelve únicamente `watermark_free`. Tratar el enlace como privado: compartirlo comparte el beneficio visual, aunque no da acceso a la cuenta.
 
-La cuenta consulta pagos pendientes cada 3 s inicialmente y después cada 15 s. Los permisos activos y OBS se consultan cada 60 s y al recuperar foco o conexión. Ante error, se muestra la marca hasta verificar de nuevo. Los enlaces antiguos sin credencial requieren copiarse una vez. La rotación desde la interfaz incrementa la revisión del permiso e invalida los enlaces anteriores; copiar los nuevos después.
+La cuenta consulta pagos pendientes cada 3 s inicialmente y después cada 15 s. El estudio y OBS consultan el permiso cada 15 s y también al recuperar foco, conexión o visibilidad. El canje avisa a otras ventanas mediante BroadcastChannel y eventos de almacenamiento, que solicitan otra verificación al servidor: los mensajes locales nunca conceden Plus. Las fuentes de OBS en un perfil de navegador separado se actualizan mediante su propia consulta, normalmente en hasta 15 s más la latencia del servidor.
+
+Un error temporal de red, un timeout o una respuesta 5xx conserva el último permiso confirmado hasta cinco minutos desde su verificación. La caché de OBS es por credencial y dura únicamente ese plazo; sessionStorage permite mantenerla al recargar la fuente. No se renueva con errores. Una respuesta válida sin Plus, o el rechazo explícito de una credencial, retira inmediatamente el permiso. Sin un estado verificado previo, se muestra la marca. La caducidad de la caché tras una interrupción prolongada vuelve a permitir la animación habitual de apoyo.
+
+Los enlaces nuevos siempre incluyen una credencial, incluso si las compras aún no están habilitadas. No se cambia el formato de los enlaces existentes ni su firma. Se admiten las credenciales que la versión anterior guardó en sessionStorage. Una URL antigua sin fragmento puede adoptar automáticamente la credencial de lectura publicada por el estudio dentro del mismo origen y perfil de navegador; su propietario queda fijado por ruta en ese perfil para futuras recargas. Una fuente ya vinculada no cambia de cuenta cuando el estudio inicia sesión con otra. Una URL completamente anónima en un perfil aislado de OBS carece de identidad y no puede vincularse automáticamente con seguridad: BroadcastChannel y el almacenamiento del navegador no atraviesan esa separación. No se infiere propietario por IP ni por el último comprador.
+
+Activar o revocar Plus no cambia la credencial: el servidor resuelve siempre el estado actual. Rotar expresamente la credencial incrementa su revisión e invalida los enlaces anteriores; esa acción de seguridad sí exige usar el enlace nuevo. Ninguna rotación se realiza durante una compra o un canje.
 
 `SUPPORT_BILLING_SECRET` debe ser estable y respaldarse. Se puede rotar `SUPPORT_OVERLAY_SECRET` de forma independiente; invalida globalmente enlaces OBS y exige copiarlos de nuevo. Preferir la rotación por cuenta desde la interfaz.
 
@@ -46,7 +52,7 @@ python -m scripts.reconcile_support_payment --transaction-id ID_DEL_RECIBO --sta
 # Para una disputa confirmada: --state disputed
 ```
 
-Consultar `python -m scripts.reconcile_support_payment --help` para la sintaxis exacta. El comando solo revoca, no concede beneficios; registra actor, motivo y estado anterior. Un webhook repetido no reactiva una devolución. La revocación llega a sesiones abiertas en la siguiente consulta (normalmente hasta 60 s si hay conexión). No exponer la clave service-role ni esta operación como endpoint público. El proceso de devolución comercial sigue realizándose en el proveedor; este comando no devuelve dinero.
+Consultar `python -m scripts.reconcile_support_payment --help` para la sintaxis exacta. El comando solo revoca, no concede beneficios; registra actor, motivo y estado anterior. Un webhook repetido no reactiva una devolución. La revocación llega a sesiones abiertas en la siguiente consulta (normalmente hasta 15 s más la latencia del servidor si hay conexión). No exponer la clave service-role ni esta operación como endpoint público. El proceso de devolución comercial sigue realizándose en el proveedor; este comando no devuelve dinero.
 
 ## Validación local
 

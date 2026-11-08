@@ -633,4 +633,4 @@ async def overlay_status(token: str) -> dict:
     result = await rpc(
         "support_overlay_status", p_viewer_id=match[1], p_revision=int(match[2])
     )
-    return {"watermark_free": result.get("watermark_free") is True}
+    return {"watermark_free": configured() and result.get("watermark_free") is True}

@@ -427,6 +427,44 @@ class BillingTests(unittest.IsolatedAsyncioTestCase):
                 )
             rpc.assert_not_awaited()
 
+    async def test_overlay_identity_is_issued_before_purchases_are_enabled(self):
+        with patch.object(billing.config, "KOFI_WATERMARK_ENABLED", False), patch.object(
+            billing, "rpc", new_callable=AsyncMock,
+            return_value={"viewer_id": "12345678-1234-1234-1234-123456789abc", "revision": 1},
+        ):
+            token = (await billing.overlay_key(USER))["token"]
+        self.assertNotIn(USER.user_id, token)
+        self.assertNotIn(USER.session_id, token)
+
+    async def test_existing_overlay_token_observes_activation_and_revocation(self):
+        viewer_id = "12345678-1234-1234-1234-123456789abc"
+        token = f"{viewer_id}.1.{billing.overlay_signature(viewer_id, 1)}"
+        with patch.object(billing, "rpc", new_callable=AsyncMock, side_effect=[
+            {"watermark_free": False}, {"watermark_free": True}, {"watermark_free": False}
+        ]) as rpc:
+            self.assertEqual([await billing.overlay_status(token) for _ in range(3)], [
+                {"watermark_free": False}, {"watermark_free": True}, {"watermark_free": False}
+            ])
+        for call in rpc.await_args_list:
+            self.assertEqual(call.args, ("support_overlay_status",))
+            self.assertEqual(call.kwargs, {"p_viewer_id": viewer_id, "p_revision": 1})
+
+    async def test_public_overlay_response_cannot_leak_additional_database_fields(self):
+        viewer_id = "12345678-1234-1234-1234-123456789abc"
+        token = f"{viewer_id}.1.{billing.overlay_signature(viewer_id, 1)}"
+        with patch.object(billing, "rpc", new_callable=AsyncMock, return_value={
+            "watermark_free": True, "user_id": "private", "transaction_id": "private", "email_hash": "private"
+        }):
+            self.assertEqual(await billing.overlay_status(token), {"watermark_free": True})
+
+    async def test_overlay_permission_matches_studio_when_billing_is_disabled(self):
+        viewer_id = "12345678-1234-1234-1234-123456789abc"
+        token = f"{viewer_id}.1.{billing.overlay_signature(viewer_id, 1)}"
+        with patch.object(billing.config, "KOFI_WATERMARK_ENABLED", False), patch.object(
+            billing, "rpc", new_callable=AsyncMock, return_value={"watermark_free": True}
+        ):
+            self.assertEqual(await billing.overlay_status(token), {"watermark_free": False})
+
     async def test_verified_email_fetch_rejects_mismatched_clerk_account(self):
         response = SimpleNamespace(
             raise_for_status=lambda: None,
@@ -568,6 +606,15 @@ class EndpointTests(unittest.TestCase):
             ).status_code,
             400,
         )
+
+    def test_public_overlay_status_is_minimal_and_uncached(self):
+        viewer_id = "12345678-1234-1234-1234-123456789abc"
+        token = f"{viewer_id}.1.{billing.overlay_signature(viewer_id, 1)}"
+        with patch.object(billing, "rpc", new_callable=AsyncMock, return_value={"watermark_free": True, "transaction_id": "private"}):
+            response = self.client.post("/support/overlay-status", json={"token": token})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"watermark_free": True})
+        self.assertEqual(response.headers["cache-control"], "no-store, private")
 
     def test_overlay_cannot_send_account_id_instead_of_limited_credential(self):
         self.assertEqual(
