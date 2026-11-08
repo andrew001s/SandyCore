@@ -601,8 +601,18 @@ def overlay_signature(viewer_id: str, revision: int) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
 
 
+def require_overlay_configured() -> None:
+    secret = getattr(config, "SUPPORT_OVERLAY_SECRET", "")
+    if len(secret) < 32 or secret in (
+        config.SUPPORT_BILLING_SECRET,
+        config.CLERK_SECRET_KEY,
+        config.KOFI_VERIFICATION_TOKEN,
+    ):
+        raise HTTPException(503, "No se pudo preparar el enlace privado de OBS.")
+
+
 async def overlay_key(user, rotate: bool = False) -> dict:
-    require_configured()
+    require_overlay_configured()
     require_session(user)
     limit_requests(f"overlay-key:{user.user_id}", 12)
     key = await rpc("support_overlay_key", p_user_id=user.user_id, p_rotate=rotate)
@@ -611,7 +621,7 @@ async def overlay_key(user, rotate: bool = False) -> dict:
 
 
 async def overlay_status(token: str) -> dict:
-    require_configured()
+    require_overlay_configured()
     match = re.fullmatch(
         r"([a-f0-9-]{36})\.([1-9][0-9]{0,8})\.([A-Za-z0-9_-]{43})", token
     )
@@ -620,6 +630,7 @@ async def overlay_status(token: str) -> dict:
     ):
         raise HTTPException(401, "Invalid overlay credential")
     limit_requests(f"overlay-status:{match[1]}", 120)
-    return await rpc(
+    result = await rpc(
         "support_overlay_status", p_viewer_id=match[1], p_revision=int(match[2])
     )
+    return {"watermark_free": result.get("watermark_free") is True}
