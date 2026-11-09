@@ -259,7 +259,7 @@ def build_stop_sequences(name: str | None = None) -> list[str]:
 _SENTENCE_BOUNDARY = re.compile(r"[.!?…]+[\"'\)\]]*(?=\s)")
 MAX_STREAM_SEGMENT = 240
 _REACTION_MARKER = re.compile(
-    r"\[\[REACTION:(yes|no|none|happy|sad|angry|surprised|excited|sleepy|thinking|confused|shy)\]\]\s*$",
+    r"\[\[\s*REACTION\s*:\s*(yes|no|none|happy|sad|angry|surprised|excited|sleepy|thinking|confused|shy)\s*\]\]\s*$",
     re.IGNORECASE,
 )
 

@@ -7,7 +7,7 @@ from app.domain.automatic_reactions import filter_reaction_decision
 
 
 _REACTION_MARKER = re.compile(
-    r"\s*\[\[REACTION:(none|happy|sad|angry|surprised|excited|sleepy|thinking|confused|shy)\]\]\s*$",
+    r"\s*\[\[\s*REACTION\s*:\s*(none|happy|sad|angry|surprised|excited|sleepy|thinking|confused|shy)\s*\]\]\s*$",
     re.IGNORECASE,
 )
 
