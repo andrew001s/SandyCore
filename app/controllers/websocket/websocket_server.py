@@ -76,9 +76,15 @@ class ConnectionManager:
             except Exception:
                 return
 
-    async def broadcast(self, message: Dict[str, Any], user_id: str) -> None:
+    async def broadcast(
+        self, message: Dict[str, Any], user_id: str, *, streams_first: bool = False
+    ) -> None:
         """Entrega el evento únicamente a las conexiones de este usuario."""
         owner = str(user_id)
+        if streams_first:
+            for queue in list(self._streams.get(owner, [])):
+                self._push_to_queue(queue, message)
+
         stale: List[WebSocket] = []
         for connection in list(self._connections.get(owner, [])):
             try:
@@ -89,8 +95,9 @@ class ConnectionManager:
         for connection in stale:
             await self.disconnect(connection, owner)
 
-        for queue in list(self._streams.get(owner, [])):
-            self._push_to_queue(queue, message)
+        if not streams_first:
+            for queue in list(self._streams.get(owner, [])):
+                self._push_to_queue(queue, message)
 
     async def broadcast_all(self, message: Dict[str, Any]) -> None:
         """Anuncios del servidor a todo el mundo. Nunca para eventos de usuario."""

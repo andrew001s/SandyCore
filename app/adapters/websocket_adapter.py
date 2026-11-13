@@ -5,5 +5,10 @@ from app.core.ports.websocket_port import WebsocketPort
 
 
 class WebsocketAdapter(WebsocketPort):
-    async def broadcast_message(self, message: Dict[str, Any], user_id: str) -> None:
-        await manager.broadcast(message, user_id)
+    async def broadcast_message(
+        self, message: Dict[str, Any], user_id: str, *, streams_first: bool = False
+    ) -> None:
+        if streams_first:
+            await manager.broadcast(message, user_id, streams_first=True)
+        else:
+            await manager.broadcast(message, user_id)

@@ -169,6 +169,7 @@ celerybeat.pid
 env/
 venv/
 ENV/
+.env.prod
 env.bak/
 venv.bak/
 
@@ -253,3 +254,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,windows,venv,dotenv
+
+# Keep the support-payment reconciliation command in source control.
+!/scripts/
+/scripts/*
+!/scripts/reconcile_support_payment.py

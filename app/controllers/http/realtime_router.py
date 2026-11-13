@@ -35,6 +35,11 @@ def _format_sse(event_name: str, payload: dict[str, Any]) -> str:
 
 @router.get("/stream")
 async def stream_events(request: Request, token: str = Query(...)):
+    """Entrega eventos del usuario, incluidos errores de IA como eventos system.
+
+    Para estos errores, metadata.source es "ai_error" y metadata.error contiene
+    el código estable y el proveedor, sin detalles crudos de la respuesta externa.
+    """
     payload = verify_stream_token(token)
     user_id = str(payload["sub"])
     queue = await manager.connect_stream(user_id)

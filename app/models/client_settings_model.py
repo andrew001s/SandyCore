@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -34,3 +34,8 @@ class ClientSettingsModel(BaseModel):
     chat_trigger_mode: Optional[Literal["batch", "command"]] = None
     chat_command: Optional[str] = Field(default=None, max_length=32)
     onboarding_completed: Optional[bool] = None
+    vrm_trigger_rules: Optional[list[dict]] = None
+    automatic_reaction_mappings: Optional[dict[str, str]] = None
+    automatic_reaction_scope: Optional[Literal["pngtuber", "live2d", "vrm", "vtubestudio"]] = None
+    expression_hotkeys: Optional[dict[Annotated[str, Field(max_length=512)], Annotated[str, Field(max_length=80)]]] = Field(default=None, max_length=256)
+    expression_intensities: Optional[dict[Annotated[str, Field(max_length=512)], Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]]] = Field(default=None, max_length=256)

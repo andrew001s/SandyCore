@@ -44,6 +44,11 @@ SETTINGS_KEYS = {
     "chat_trigger_mode",
     "chat_command",
     "onboarding_completed",
+    "vrm_trigger_rules",
+    "expression_hotkeys",
+    "expression_intensities",
+    "automatic_reaction_mappings",
+    "automatic_reaction_scope",
 }
 
 SENSITIVE_SETTING_KEYS = {

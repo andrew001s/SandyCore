@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI
 
@@ -22,12 +23,24 @@ _ROLLBAR_SCRUB_FIELDS = [
     "authorization",
     "cookie",
     "csrf_token",
+    "verification_token",
+    "receipt_id",
+    "email",
 ]
+
+
+def exclude_support_payload(payload, **kwargs):
+    request = payload.get("data", {}).get("request", {})
+    if urlsplit(str(request.get("url", ""))).path.startswith("/support/"):
+        return False
+    return payload
 
 
 def configure_rollbar(app: FastAPI) -> bool:
     if rollbar is None or rollbar_add_to is None:
-        logger.warning("Rollbar is not installed; skipping error reporting integration.")
+        logger.warning(
+            "Rollbar is not installed; skipping error reporting integration."
+        )
         return False
 
     if not config.ROLLBAR_ACCESS_TOKEN:
@@ -40,6 +53,9 @@ def configure_rollbar(app: FastAPI) -> bool:
         code_version=config.ROLLBAR_CODE_VERSION,
         scrub_fields=_ROLLBAR_SCRUB_FIELDS,
     )
+    from rollbar import events
+
+    events.add_payload_handler(exclude_support_payload)
     rollbar_add_to(app)
     logger.info("Rollbar enabled for environment %s.", config.ROLLBAR_ENVIRONMENT)
     return True
