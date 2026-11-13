@@ -1,3 +1,22 @@
+## v2.20.0 (2026-11-13)
+
+### Feat
+
+- ✨ Añadir .env.prod al archivo .gitignore
+- ✨ Mejorar la expresión regular para el marcador de reacción en los casos de uso de chat y gemini
+- ✨ Mejorar la gestión de permisos de superposición y agregar pruebas unitarias correspondientes
+- ✨ Añadir validación de configuración de superposición y eliminar migraciones obsoletas
+- Enhance Ko-fi payment processing and testing capabilities
+- ✨ Add Ko-fi support for one-time purchases and payment reconciliation
+- ✨ añadir soporte para intensidades de expresión y pruebas unitarias correspondientes
+- ✨ añadir soporte para hotkeys de expresión y pruebas unitarias correspondientes
+- ✨ implementar la gestión de reacciones automáticas y mejorar la configuración del cliente
+- ✨ añadir pruebas unitarias para la función de memoria y mejorar la gestión de recursos
+- ✨ añadir registro de habilidades y mejorar la gestión de reacciones en los prompts
+- ✨ mejorar el manejo de errores de IA y notificaciones a través de WebSocket
+- ✨ implement automatic reaction handling and update prompts for emotion metadata
+- ✨ add avatar trigger publishing for various Twitch events and enhance client settings
+
 ## v2.19.0 (2026-10-22)
 
 ### Feat
