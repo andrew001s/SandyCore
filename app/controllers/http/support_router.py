@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.security.clerk import ClerkUser, verify_clerk_session
+from app.core.security.stream_token import create_stream_token
 from app.services import support_billing as billing
 
 router = APIRouter(prefix="/support", tags=["Support purchases"])
@@ -29,6 +30,10 @@ class OverlayKeyRequest(EmptyRequest):
 
 class OverlayStatusRequest(EmptyRequest):
     token: str = Field(min_length=70, max_length=200)
+
+
+class OverlayRealtimeRequest(OverlayStatusRequest):
+    pass
 
 
 def private_response(payload: dict) -> JSONResponse:
@@ -78,6 +83,17 @@ async def get_overlay_status(request: Request):
     except ValueError:
         raise HTTPException(400, "Invalid overlay request") from None
     return private_response(await billing.overlay_status(payload.token))
+
+
+@router.post("/overlay-stream-token")
+async def get_overlay_stream_token(request: Request):
+    body = await limited_body(request, 2048)
+    try:
+        payload = OverlayRealtimeRequest.model_validate_json(body)
+    except ValueError:
+        raise HTTPException(400, "Invalid overlay request") from None
+    subject = await billing.overlay_stream_subject(payload.token)
+    return private_response({"token": create_stream_token(subject)})
 
 
 async def limited_body(request: Request, maximum: int) -> bytes:

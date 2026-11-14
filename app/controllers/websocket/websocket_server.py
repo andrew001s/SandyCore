@@ -149,6 +149,17 @@ async def handle_websocket(websocket: WebSocket, token: str | None = None):
 
                 message_type = message_data.get("type", "chat")
 
+                # Overlay sync messages are scoped to the signed viewer subject
+                # used by both the studio and its private OBS capability.
+                if (
+                    isinstance(message_type, str)
+                    and message_type in {"overlay_sandy_vrm_sync", "overlay_sandy_avatar2d_sync"}
+                    and len(data) <= 1_500_000
+                    and isinstance(message_data.get("payload"), dict)
+                ):
+                    await manager.broadcast(message_data, user_id)
+                    continue
+
                 if message_type == "chat":
                     message = ChatMessage(
                         type=message_type,

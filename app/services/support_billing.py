@@ -634,3 +634,21 @@ async def overlay_status(token: str) -> dict:
         "support_overlay_status", p_viewer_id=match[1], p_revision=int(match[2])
     )
     return {"watermark_free": configured() and result.get("watermark_free") is True}
+
+
+async def overlay_stream_subject(token: str) -> str:
+    """Validate a read-only OBS capability and return its isolated relay subject."""
+    require_overlay_configured()
+    match = re.fullmatch(
+        r"([a-f0-9-]{36})\.([1-9][0-9]{0,8})\.([A-Za-z0-9_-]{43})", token
+    )
+    if not match or not hmac.compare_digest(
+        match[3], overlay_signature(match[1], int(match[2]))
+    ):
+        raise HTTPException(401, "Invalid overlay credential")
+    result = await rpc(
+        "support_overlay_status", p_viewer_id=match[1], p_revision=int(match[2])
+    )
+    if result.get("valid") is False:
+        raise HTTPException(401, "Revoked overlay credential")
+    return match[1]
