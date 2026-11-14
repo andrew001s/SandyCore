@@ -1,3 +1,9 @@
+## v2.21.0 (2026-11-14)
+
+### Feat
+
+- ✨ Añadir soporte para solicitudes de token de flujo de superposición y mejorar la gestión de mensajes de sincronización en WebSocket
+
 ## v2.20.0 (2026-11-13)
 
 ### Feat
