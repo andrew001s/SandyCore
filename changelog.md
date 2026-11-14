@@ -1,3 +1,9 @@
+## v2.22.0 (2026-11-14)
+
+### Feat
+
+- ✨ Añadir soporte para roles en tokens de flujo y mejorar la gestión de mensajes en WebSocket
+
 ## v2.21.0 (2026-11-14)
 
 ### Feat
