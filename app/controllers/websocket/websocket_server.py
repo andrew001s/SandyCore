@@ -77,7 +77,12 @@ class ConnectionManager:
                 return
 
     async def broadcast(
-        self, message: Dict[str, Any], user_id: str, *, streams_first: bool = False
+        self,
+        message: Dict[str, Any],
+        user_id: str,
+        *,
+        streams_first: bool = False,
+        exclude: WebSocket | None = None,
     ) -> None:
         """Entrega el evento únicamente a las conexiones de este usuario."""
         owner = str(user_id)
@@ -87,6 +92,8 @@ class ConnectionManager:
 
         stale: List[WebSocket] = []
         for connection in list(self._connections.get(owner, [])):
+            if connection is exclude:
+                continue
             try:
                 await connection.send_json(message)
             except Exception:
@@ -129,6 +136,7 @@ async def handle_websocket(websocket: WebSocket, token: str | None = None):
     try:
         payload = verify_stream_token(token)
         user_id = str(payload["sub"])
+        role = payload.get("role", "publisher")
     except Exception:
         await websocket.close(code=1008, reason="Token de stream inválido o expirado")
         return
@@ -149,15 +157,23 @@ async def handle_websocket(websocket: WebSocket, token: str | None = None):
 
                 message_type = message_data.get("type", "chat")
 
+                if role == "viewer" and not (
+                    isinstance(message_type, str)
+                    and message_type in {"overlay_sandy_vrm_sync", "overlay_sandy_avatar2d_sync"}
+                    and isinstance(message_data.get("payload"), dict)
+                    and message_data["payload"].get("type") == "requestState"
+                ):
+                    continue
+
                 # Overlay sync messages are scoped to the signed viewer subject
                 # used by both the studio and its private OBS capability.
                 if (
                     isinstance(message_type, str)
                     and message_type in {"overlay_sandy_vrm_sync", "overlay_sandy_avatar2d_sync"}
-                    and len(data) <= 1_500_000
+                    and len(data) <= 12_000_000
                     and isinstance(message_data.get("payload"), dict)
                 ):
-                    await manager.broadcast(message_data, user_id)
+                    await manager.broadcast(message_data, user_id, exclude=websocket)
                     continue
 
                 if message_type == "chat":

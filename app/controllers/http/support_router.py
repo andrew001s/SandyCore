@@ -33,7 +33,7 @@ class OverlayStatusRequest(EmptyRequest):
 
 
 class OverlayRealtimeRequest(OverlayStatusRequest):
-    pass
+    role: str = Field(pattern=r"^(publisher|viewer)$")
 
 
 def private_response(payload: dict) -> JSONResponse:
@@ -93,7 +93,7 @@ async def get_overlay_stream_token(request: Request):
     except ValueError:
         raise HTTPException(400, "Invalid overlay request") from None
     subject = await billing.overlay_stream_subject(payload.token)
-    return private_response({"token": create_stream_token(subject)})
+    return private_response({"token": create_stream_token(subject, role=payload.role)})
 
 
 async def limited_body(request: Request, maximum: int) -> bytes:

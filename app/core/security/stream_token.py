@@ -31,7 +31,12 @@ def _b64decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + ("=" * padding_len))
 
 
-def create_stream_token(user_id: str, ttl_seconds: int = STREAM_TOKEN_TTL_SECONDS) -> str:
+def create_stream_token(
+    user_id: str,
+    ttl_seconds: int = STREAM_TOKEN_TTL_SECONDS,
+    *,
+    role: str | None = None,
+) -> str:
     now = int(time.time())
     payload = {
         "sub": user_id,
@@ -39,6 +44,8 @@ def create_stream_token(user_id: str, ttl_seconds: int = STREAM_TOKEN_TTL_SECOND
         "exp": now + ttl_seconds,
         "nonce": secrets.token_urlsafe(12),
     }
+    if role in {"publisher", "viewer"}:
+        payload["role"] = role
     raw_payload = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
         "utf-8"
     )
