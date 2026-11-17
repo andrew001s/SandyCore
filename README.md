@@ -267,3 +267,19 @@ Este proyecto está bajo una **Licencia Dual**:
 - **GPL-3.0 License**: Garantiza que cualquier distribución del código (modificado o no) esté bajo los mismos términos de la GPL-3.0.
 
 ---
+
+## Validación manual de eventos PostHog (staging)
+
+> Ejecutar únicamente en staging con la rama `feat/posthog-activation-events`. No hay despliegue ni pruebas automatizadas confirmadas. PostHog se habilitó en noviembre de 2026: no inferir ausencia de usuarios por falta de datos previos.
+
+- [ ] **Inicio exitoso:** con el servicio detenido, iniciarlo desde el panel; comprobar **un** `vtuber_session_started` después de la confirmación.
+- [ ] **Inicio fallido:** provocar un error controlado al iniciar; comprobar que **no** se emite `vtuber_session_started`.
+- [ ] **Respuesta IA exitosa:** con servicio activo, hablar por el micrófono y obtener texto no vacío; comprobar `ai_response_succeeded` con `provider` y `mode` correctos.
+- [ ] **Error IA:** usar una credencial inválida *solo en staging*; comprobar `ai_request_failed` y ausencia de `ai_response_succeeded` para ese intento.
+- [ ] **Respuesta vacía:** simular un stream sin contenido; comprobar que no se emite `ai_response_succeeded`.
+- [ ] **Error de TTS:** simular un fallo de síntesis de voz después de generar texto; verificar que el resultado analítico no confunda éxito de IA con éxito de voz. Documentar el comportamiento observado antes de aprobar.
+- [ ] **Privacidad e identidad:** revisar propiedades en PostHog; no deben enviarse prompts, respuestas, credenciales ni datos personales; verificar asociación correcta con el usuario de prueba.
+- [ ] **Duplicados y cobertura:** confirmar que no se cuentan dos arranques por un mismo inicio; revisar por separado Twitch, Kick, YouTube y flujos automáticos, aún no cubiertos íntegramente.
+- [ ] **Monetización:** `support_checkout_started` es el checkout de Sandy Plus (pago único Ko-fi), **no** una suscripción. No dar por implementado `subscription_activated` hasta confirmar el pago recurrente en backend con deduplicación.
+
+Abrir [PostHog Events](https://us.posthog.com/project/542743/events) y filtrar por nombre de evento, usuario y momento de la prueba. **No fusionar a `main` hasta completar las verificaciones relevantes y revisar los casos pendientes.**
